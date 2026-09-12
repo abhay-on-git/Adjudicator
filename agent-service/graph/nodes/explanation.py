@@ -6,6 +6,8 @@ read-only context — its structured-output schema (`ExplanationOutput`, see
 graph/schemas.py) has no field that could change the outcome or amount, only
 `narrative` (text) and `cited_clause_ids` (for the groundedness check below).
 
+Uses the configured provider via `parse_structured`.
+
 Groundedness check: every clause_id the model claims to cite must actually be
 in `retrieved_clauses` — a citation to a clause that was never retrieved
 would be a fabricated reference, logged as a `GROUNDEDNESS_VIOLATION` and
@@ -20,17 +22,12 @@ template-generated explanation from the same data instead.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 
-from openai import AsyncOpenAI
-from pydantic import ValidationError
-
-from graph.nodes.llm_utils import call_with_backoff
+from graph.nodes.llm_utils import call_with_backoff, parse_structured
 from graph.schemas import AuditEvent, AuditEventType, ExplanationOutput
 from graph.state import AdjudicationState
 
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-5.6-luna")
 MAX_API_RETRIES = 2
 BACKOFF_SECONDS = [1, 2]
 
@@ -41,10 +38,6 @@ outcome or amount than the one given to you. Cite clause IDs (e.g. "§4.2.9") in
 wherever you reference a specific rule, and list every clause_id you cite in \
 `cited_clause_ids`. Only cite a clause that is in the provided evidence — never \
 invent a clause_id."""
-
-
-def _client() -> AsyncOpenAI:
-    return AsyncOpenAI()
 
 
 def _now_iso() -> str:
@@ -76,19 +69,11 @@ def _build_context(state: AdjudicationState) -> str:
 
 
 async def _call_llm(context: str) -> ExplanationOutput:
-    client = _client()
-    response = await client.responses.parse(
-        model=MODEL_NAME,
-        input=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": context},
-        ],
+    return await parse_structured(
+        system=_SYSTEM_PROMPT,
+        user=context,
         text_format=ExplanationOutput,
     )
-    parsed = response.output_parsed
-    if parsed is None:
-        raise ValidationError.from_exception_data("ExplanationOutput", [{"type": "missing", "loc": (), "input": None}])
-    return parsed
 
 
 def _template_fallback(state: AdjudicationState) -> ExplanationOutput:

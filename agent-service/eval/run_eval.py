@@ -1,7 +1,8 @@
 """Evaluation harness: runs every claim in fixtures/claims/claims.json
 through the REAL compiled graph (real MCP tools, real LLM calls — this
-needs a working OPENAI_API_KEY in .env, unlike the rest of the test suite,
-which mocks the LLM seams deliberately) and reports four things:
+needs a working LLM API key in .env for the active LLM_PROVIDER, unlike
+the rest of the test suite, which mocks the LLM seams deliberately) and
+reports four things:
 
   1. Outcome accuracy against fixtures/claims/ground_truth.json.
   2. Groundedness rate: fraction of runs with zero
@@ -32,9 +33,13 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from eval.variants import PHRASING_VARIANTS, REPEAT_CONSISTENCY_SAMPLE
 from graph.build_graph import compile_graph
 from graph.state import initial_state
+
+load_dotenv()
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "claims"
 CLAIMS_FILE = FIXTURES_DIR / "claims.json"
