@@ -1,0 +1,39 @@
+## Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+## Env / secrets
+.env
+.env.*
+!.env.example
+
+## Node / React
+node_modules/
+dist/
+build/
+.vite/
+*.log
+npm-debug.log*
+
+## Django
+/backend/staticfiles/
+/backend/media/
+db.sqlite3
+
+## Agent service runtime artifacts
+/agent-service/checkpoints/
+/agent-service/*.db
+/agent-service/eval/output/
+
+## OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
