@@ -12,11 +12,14 @@ import asyncio
 import time
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 from graph.build_graph import compile_graph
 from routes import router as claims_router
+
+load_dotenv()
 
 CHECKPOINT_DB_PATH = "checkpoints/adjudicator.sqlite"
 

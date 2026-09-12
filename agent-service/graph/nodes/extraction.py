@@ -1,13 +1,9 @@
 """extraction — the first of two LLM-backed nodes.
 
-Calls OpenAI's Responses API with Structured Outputs
-(`client.responses.parse(..., text_format=ExtractedNarrativeFacts)` —
-confirmed against current docs, not memory, given openai-python has moved
-well past the chat-completions-based patterns in older training data).
-Structured Outputs constrains decoding to the JSON schema, so malformed JSON
-is rare; the retry-on-validation-failure path mainly exists for the SDK
-returning a refusal, or the rare response that fails a Pydantic-level check
-JSON Schema can't express.
+Calls the configured LLM provider (OpenAI or MiniMax) for structured
+extraction into `ExtractedNarrativeFacts`. OpenAI uses Responses structured
+outputs; MiniMax uses chat completions + JSON schema prompt + Pydantic
+validation — see `graph.nodes.llm_utils.parse_structured`.
 
 Implements degradation modes 2 and 3 from DESIGN.md:
   - Mode 2 (schema validation failure): one retry with a stricter re-prompt
@@ -24,17 +20,14 @@ docstring for why the LLM is never even asked for these fields.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 
-from openai import AsyncOpenAI
 from pydantic import ValidationError
 
-from graph.nodes.llm_utils import call_with_backoff
+from graph.nodes.llm_utils import call_with_backoff, parse_structured
 from graph.schemas import AuditEvent, AuditEventType, ClaimFacts, ExtractedNarrativeFacts
 from graph.state import AdjudicationState
 
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-5.6-luna")
 MAX_API_RETRIES = 3
 BACKOFF_SECONDS = [1, 2, 4]  # index 0 used before 2nd attempt, etc.
 
@@ -67,32 +60,17 @@ Rules:
 - Never invent a date, peril, or line item that is not actually in the text."""
 
 
-def _client() -> AsyncOpenAI:
-    return AsyncOpenAI()  # reads OPENAI_API_KEY from the environment; never hardcoded/logged
-
-
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
 async def _call_llm(narrative_text: str, extra_instruction: str = "") -> ExtractedNarrativeFacts:
-    client = _client()
     system_prompt = _SYSTEM_PROMPT + (f"\n\n{extra_instruction}" if extra_instruction else "")
-    response = await client.responses.parse(
-        model=MODEL_NAME,
-        input=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": narrative_text},
-        ],
+    return await parse_structured(
+        system=system_prompt,
+        user=narrative_text,
         text_format=ExtractedNarrativeFacts,
     )
-    parsed = response.output_parsed
-    if parsed is None:
-        refusal = getattr(response, "output_text", None) or "model returned no parsed output"
-        raise ValidationError.from_exception_data(
-            "ExtractedNarrativeFacts", [{"type": "missing", "loc": (), "input": refusal}]
-        )
-    return parsed
 
 
 async def _call_llm_with_backoff(narrative_text: str, extra_instruction: str = "") -> tuple[

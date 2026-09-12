@@ -1,7 +1,7 @@
-"""extraction node tests. No real OpenAI calls — every test mocks either the
-low-level `_call_llm` helper (for retry/escalation logic) or the OpenAI
-client itself (for at least one test verifying the actual SDK call shape),
-so these run with no API key and no network access."""
+"""extraction node tests. No real LLM calls — every test mocks either the
+low-level `_call_llm` helper (for retry/escalation logic) or
+`parse_structured` (for at least one test verifying the retry loop against
+the real call path), so these run with no API key and no network access."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -115,22 +115,17 @@ async def test_validation_failure_twice_escalates_with_extraction_failed(monkeyp
 
 @pytest.mark.asyncio
 async def test_backoff_retries_transient_api_error_then_succeeds(monkeypatch):
-    """Exercises _call_llm_with_backoff directly against a mocked OpenAI
-    client to prove the actual retry loop (not just extraction()'s handling
-    of its result) works, using the real SDK call shape."""
+    """Exercises _call_llm_with_backoff directly against a mocked
+    parse_structured to prove the actual retry loop works."""
     call_count = {"n": 0}
 
     async def flaky_parse(**kwargs):
         call_count["n"] += 1
         if call_count["n"] < 2:
             raise APIConnectionError(request=MagicMock())
-        response = MagicMock()
-        response.output_parsed = make_good_facts()
-        return response
+        return make_good_facts()
 
-    fake_client = MagicMock()
-    fake_client.responses.parse = AsyncMock(side_effect=flaky_parse)
-    monkeypatch.setattr(extraction_module, "_client", lambda: fake_client)
+    monkeypatch.setattr(extraction_module, "parse_structured", AsyncMock(side_effect=flaky_parse))
     monkeypatch.setattr(extraction_module, "BACKOFF_SECONDS", [0, 0, 0])
 
     parsed, failure = await extraction_module._call_llm_with_backoff("narrative")
