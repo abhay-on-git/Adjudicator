@@ -200,3 +200,26 @@ def test_deductible_applied_once_per_claim_not_per_item():
     result = compute_payout(facts, clauses=[])
     assert result.deductible_applied == 5000  # once, not 10000
     assert result.total_payable == 5000  # (5000+5000) - 5000
+
+
+def test_home_flood_mis_tagged_as_water_damage_still_escalates_uncovered():
+    """CLM-022 class: LLM may emit water_damage + sudden_discharge for river
+    flood; rules must not approve under §4.2.1."""
+    facts = make_facts(
+        date_of_loss="2024-08-08",
+        perils=[Peril.WATER_DAMAGE],
+        narrative_summary="Ground floor flooded when the river overflowed.",
+        line_items=[
+            LineItem(
+                description="Flood damage to flooring and furniture from river overflow",
+                category="flooring",
+                claimed_amount=90_000,
+                evidence_tags=["sudden_discharge"],
+            )
+        ],
+    )
+    result = compute_payout(facts, clauses=[])
+    assert result.line_items[0].verdict == LineItemVerdict.EXCLUDED
+    assert result.total_payable == 0.0
+    assert result.needs_escalation
+    assert "Flood" in (result.escalation_reason or "")

@@ -36,7 +36,10 @@ cd agent-service
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 copy .env.example .env
-# then fill in OPENAI_API_KEY in .env — never commit this file
+# then set LLM_PROVIDER=minimax|openai and the matching API key —
+# never commit .env. Default provider is minimax. One model per provider
+# (OPENAI_MODEL / MINIMAX_MODEL) is used for extraction and explanation —
+# see agent-service/.env.example.
 ```
 
 Run it:
@@ -86,11 +89,12 @@ With all three running, open `http://localhost:5173`, submit a claim (use a
 fixture `claim_id` like `CLM-001` to replay a known case against
 `fixtures/claims/ground_truth.json`, or leave it blank to get an
 auto-generated one), and watch the graph's node-by-node progress stream in
-live. Until a real `OPENAI_API_KEY` is set, the run will stop at the
-`extraction` node (the first LLM call) — this is expected; everything before
-that point (intake, routing skeleton) and the entire deterministic core
-(once extraction is unblocked) is real, tested code — see `AUDIT.md` for a
-full trace with the LLM calls mocked at the same seam the test suite uses.
+live. Until a real LLM API key is set for the active `LLM_PROVIDER`, the run
+will stop at the `extraction` node (the first LLM call) — this is expected;
+everything before that point (intake, routing skeleton) and the entire
+deterministic core (once extraction is unblocked) is real, tested code —
+see `AUDIT.md` for a full trace with the LLM calls mocked at the same seam
+the test suite uses.
 
 ## Running the tests
 
@@ -115,8 +119,8 @@ npx tsc --noEmit && npm run build
 
 ```powershell
 cd agent-service
-# requires a real OPENAI_API_KEY in .env — this is the one thing in the
-# whole repo that needs it, see EVIDENCE.md §6
+# requires a real LLM API key in .env for LLM_PROVIDER (minimax or openai) —
+# this is the one thing in the whole repo that needs it, see EVIDENCE.md §6
 .\.venv\Scripts\python.exe -m eval.run_eval
 ```
 

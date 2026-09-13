@@ -31,13 +31,14 @@ def test_filed_before_loss_date_is_high_severity(monkeypatch):
     assert result["risk_result"].severity == RiskSeverity.HIGH
 
 
-def test_injection_flag_carryover_is_high_severity(monkeypatch):
+def test_injection_flag_carryover_is_medium_severity(monkeypatch):
+    """Injection is audited but must not HIGH-override a correct deny/approve."""
     monkeypatch.setattr(risk_module, "get_claim_history", lambda *a, **k: [])
     state = make_state()
     state["injection_flags"] = ["system_role_marker"]
     result = risk_anomaly(state)
     assert "injection_attempt_detected" in result["risk_result"].flags
-    assert result["risk_result"].severity == RiskSeverity.HIGH
+    assert result["risk_result"].severity == RiskSeverity.MEDIUM
 
 
 def test_duplicate_claim_detection(monkeypatch):
