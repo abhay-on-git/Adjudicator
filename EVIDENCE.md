@@ -37,11 +37,12 @@ attack:
 
 ## 3. Real conditional branching — hop count, not just branch existence
 
-`tests/test_build_graph.py::test_clean_claim_reaches_end_without_escalation`
+`tests/test_build_graph.py::test_clean_claim_pauses_for_confirmation_then_commits`
 asserts every required node ran **exactly once** for a clean single-peril
-claim (CLM-001), and `escalation` never ran. A concrete trace of this exact
-run — full audit log, decision, eligibility result, and UI spec — is in
-[`AUDIT.md`](AUDIT.md): **9 node executions**.
+claim (CLM-001) up through `ui_composition`, `escalation` never ran, and the
+graph then pauses at `commit_decision` until resume. A concrete trace of the
+pre-confirmation path is in [`AUDIT.md`](AUDIT.md): **9 node executions**
+before the confirmation interrupt; resume with `approve` is the 10th.
 
 `test_missing_field_claim_escalates_and_pauses_for_human` asserts the
 opposite for a degraded claim: `policy_retrieval`, `eligibility_evaluation`,
@@ -68,13 +69,14 @@ just visually apparent from the graph diagram.
 
 | Suite | Count | Result |
 |---|---|---|
-| `agent-service` (`pytest`) | 90 | all passing |
-| `backend` (Django `manage.py test`) | 8 | all passing |
+| `agent-service` (`pytest`) | 169 | all passing |
+| `backend` (Django `manage.py test`) | 10 | all passing |
 | `frontend` (`tsc --noEmit` + `vite build`) | — | clean, no type errors, production bundle builds |
 
 Notable test files beyond the unit-level node tests: `test_mcp_tools_end_to_end.py`
-(both `search_policy` and `compute_payout` over the real MCP protocol, not
-stubs), `test_rule_table_matches_fixtures.py` and
+(`search_policy`, `get_clause`, `compute_payout`, and `flag_for_review` over
+the real MCP protocol, plus exact read/write annotation checks),
+`test_rule_table_matches_fixtures.py` and
 `test_fixtures_ground_truth_is_up_to_date.py` (drift guards — the rule table
 is cross-checked against the actual policy fixture text, and
 `ground_truth.json` is regenerated from the real `compute_payout` engine
@@ -82,6 +84,12 @@ rather than hand-typed), `test_build_graph.py` and `test_routes.py` (full
 graph / full HTTP-layer integration, LLM calls mocked at the same seam as
 the node unit tests), `claims/tests.py` (Django persistence, `httpx.stream`
 mocked to replay scripted SSE).
+
+The mutating `flag_for_review` tool is reachable only after
+`commit_decision`'s confirmation interrupt returns a valid Override payload
+with a human reason. Its gating test proves Approve, Request Documents, and an
+invalid reasonless Override do not call the tool; a valid Override calls it
+once and writes a `REVIEW_FLAGGED` audit event.
 
 ## 6. Live eval on MiniMax-M3
 
@@ -94,11 +102,30 @@ in `graph/nodes/llm_utils.py`).
 | Metric | Result |
 |---|---|
 | Outcome + amount accuracy | **72% (18/25)** |
-| Groundedness (zero fabricated citations) | **100% (18/18 scoreable)** — 7 runs never reached explanation |
+| Groundedness (strict ID + clause-content support) | **100% (19/19 scoreable)** — 6 runs never reached explanation |
 | Injection resistance CLM-024 / CLM-025 | **100% (2/2)** — both matched ground-truth outcome and amount |
 
-This accuracy run is the earlier MiniMax golden-set pass stored in
-`eval/report.json`. It is not re-stated as a shipping recommendation here.
+Outcome accuracy and injection resistance above are from the earlier
+MiniMax golden-set pass. Groundedness was re-run separately on all 25 claims
+with run prefix `strict-v4-` after upgrading the verifier and reconciling
+decision-driving evidence; its raw results
+are stored under `groundedness_raw_results` in `eval/report.json`.
+
+The stricter verifier first checks that a cited ID was retrieved, then checks
+meaningful keyword/entity overlap between the sentence containing that ID and
+the clause's title/full text. A deliberately bad test says cabinetry is capped
+under retrieved deductible clause §2.3; it now yields
+`content_mismatch:§2.3` (the old presence-only check passed this class of
+error).
+
+**Found and fixed:** the first strict run scored 94.4% (17/18) because CLM-018
+had `citation_not_retrieved:§4.4`: deterministic eligibility applied §4.4's
+₹20,000 diagnostics cap, but ranked retrieval omitted it at `top_k=5`.
+`evidence_reconciliation` now exact-fetches every missing
+`EligibilityResult.clauses_used` ID through MCP `get_clause` and unions it into
+`retrieved_clauses` before explanation. The fresh `strict-v4-` live run scored
+100% (19/19); CLM-018 included §4.4 in its citable evidence and had zero
+groundedness violations.
 
 ### 6.2 Consistency under irrelevant variation (Gap 1)
 

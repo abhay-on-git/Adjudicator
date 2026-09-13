@@ -513,6 +513,14 @@
   gap: var(--space-3);
 }
 
+.confirmation-panel {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+
 .escalation-panel h3,
 .error-panel h3 {
   font-size: 16px;

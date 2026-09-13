@@ -7,11 +7,9 @@ that function's own docstring for why the resume value is read at the very
 start, before anything else runs.
 
 This node handles ONE of the two interrupt uses the spec asks for
-(escalation for low confidence / missing info / degradation). The second use
-(confirmation before any decision is committed) is P1 — see DESIGN.md open
-question #2 — and will be a separate node (`commit_decision`) added later,
-not folded into this one, so each interrupt's purpose stays legible in the
-graph shape.
+(escalation for low confidence / missing info / degradation). Confirmation
+before commit is a separate node (`commit_decision`) so each interrupt's
+purpose stays legible in the graph shape.
 """
 
 from __future__ import annotations
@@ -20,6 +18,7 @@ from datetime import datetime, timezone
 
 from langgraph.types import interrupt
 
+from graph.interrupts import KIND_ESCALATION
 from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType
 from graph.state import AdjudicationState
@@ -38,6 +37,7 @@ def escalation(state: AdjudicationState) -> dict:
     # returns the human's response instead of raising.
     human_response = interrupt(
         {
+            "kind": KIND_ESCALATION,
             "reason": reason,
             "claim_id": state.get("claim_id"),
             "decision_so_far": state.get("decision"),

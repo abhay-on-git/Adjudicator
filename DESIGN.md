@@ -74,9 +74,11 @@ exposed to the LLM as a free-choice tool-calling surface the model decides wheth
 or when to invoke — the graph's control flow, not the model, decides which tool
 runs and when. This distinction matters for auditability: if the LLM could choose
 whether to call `compute_payout`, an omitted call would be an unlogged silent
-failure mode. Read tools (`search_policy`, `get_clause`, `get_claim_history`) are
-annotated `read_only_hint=True`; the one mutating tool (`flag_for_review`) has no
-such hint and is gated behind a confirmation step (P1) rather than called freely.
+failure mode. MCP read tools (`search_policy`, `get_clause`, `compute_payout`)
+are annotated `read_only_hint=True`; `get_claim_history` remains a plain
+read-only internal function. The mutating MCP tool (`flag_for_review`) is
+annotated read-write and is gated behind the confirmation interrupt
+(`commit_decision`) rather than called freely.
 
 ## Degradation policy (required architecture property, not P1)
 
@@ -96,76 +98,165 @@ Each of the first three has a dedicated fixture claim / forced-failure test so
 
 ## Five real forks in the road
 
-_(filled in as each is hit — placeholders below, replaced with real content)_
+These are the five that changed the architecture. Additional technical
+decisions that did not displace one of these are listed after.
 
-1. Streaming transport: Django `StreamingHttpResponse` proxy vs. frontend hitting
-   agent-service's SSE endpoint directly. **Resolved by spike** (see below):
-   Django proxies. Chosen over a direct-to-agent-service connection because it
-   keeps the frontend's contract to one backend (Django) and lets Django persist
-   audit-log entries as a side effect of relaying each chunk, without a second
-   webhook path.
-2. **What exactly does the LLM extract vs. what's given structurally.**
-   `policy_id` and `policy_start_date` are treated as structural fields from
-   the claim submission form (like a real intake form's policy-number field),
-   never asked of the LLM. Only `ExtractedNarrativeFacts` — date of loss,
-   perils, line items, evidence tags — is the LLM's structured-output target;
-   `ClaimFacts` merges the two deterministically in the extraction node. This
-   shrinks the LLM's surface on the single most decision-critical identifier
-   (which policy governs) to zero.
-3. **Structured rule table vs. NLP-parsed clause prose.** `compute_payout`
-   does not parse retrieved clause text at runtime to decide coverage; it
-   runs a hand-authored Python rule table keyed by clause ID
-   (`rules/eligibility.py`), separately cross-checked against the fixture
-   markdown by `tests/test_rule_table_matches_fixtures.py`. Rejected
-   alternative: a generic clause-interpreter that reads clause text and
-   applies it programmatically — more "automatic," but it would either need
-   an LLM in the loop (violating the non-negotiable rule) or a bespoke parser
-   fragile to how each clause happens to be worded. A rules engine that reads
-   legislation-as-code, verified against source text by tests, is also how
-   this is done in real compliance systems.
-4. **Evidence tags vs. LLM-resolved coverage.** The extractor may tag a claim
-   with controlled-vocabulary facts about what the narrative asserts (e.g.
-   `pre_existing_seepage_mentioned`, `accidental_injury`) or admit the text is
-   genuinely ambiguous (`cause_ambiguous`). It never resolves what those facts
-   mean for coverage — that mapping lives entirely in `rules/eligibility.py`.
-   This is the mechanism behind both required clause interactions (§7.1.4
-   exclusion gating the §4.2.9 sub-limit; §3.1.5 waiving the §3.1.2 waiting
-   period) without the LLM ever touching the coverage question itself.
-5. **Groundedness checking lives in `explanation`, not in `compute_payout`.**
-   An early draft had `compute_payout` reject its own clause citations if they
-   weren't in `retrieved_clauses`. Cut: it conflated two different concerns
-   (deterministic computation vs. citation-to-evidence verification) and
-   broke unit-testing the engine with a partial/empty clause list. The
-   explanation node's groundedness check is the single place assertions are
-   verified against retrieved text.
+### 1. Django-fronts-a-separate-agent-service, vs. LangGraph embedded in Django
 
-6. **MCP transport: in-process vs. subprocess/stdio.** `mcp_client/client.py`
-   connects to the `MCPServer` instance directly in the same Python process
-   (the SDK's documented in-memory `Client(server)` pattern) rather than
-   spawning it as a separate process over stdio. Given the "Tool granularity
-   (MCP)" section above (MCP is a data-layer interface owned by
-   agent-service, not an arbitrary external service), a process boundary
-   would add operational complexity with no auditability benefit for this
-   project. Swapping to stdio/HTTP later only changes how the client
-   constructs its `Client`, not any node code.
+**Chose:** LangGraph, the MCP client, and the checkpointer live in a standalone
+FastAPI service (`agent-service`). Django owns the API surface, persistence, and
+the streaming proxy, and calls the agent service over internal HTTP.
 
-7. **All conditional routing lives in `build_graph.py`, never inside a node.**
-   Every node (`router`, `policy_retrieval`, `extraction`) that can trigger a
-   degradation path only *reports* that fact by setting `escalation_reason`
-   (or `retrieval_had_coverage_hit=False`) in its returned state dict; the
-   three conditional-edge functions in `build_graph.py`
-   (`_after_extraction`, `_after_router`, `_after_retrieval`) are the only
-   code that decides where the graph goes next. Rejected alternative: let
-   each node call `return Command(goto=...)` directly — works in LangGraph,
-   but scatters the graph's actual shape across ten files instead of one,
-   making the node-hop-count claim (clean claim vs. degraded claim) far
-   harder to verify by reading a single place. `graph/build_graph.py`'s
-   module docstring documents the exact hop-count for a clean claim (9 node
-   executions, never touching `escalation`) as a comment, not just a claim in
-   this file, and `AUDIT.md` traces a real one.
+**Rejected:** Embedding the graph directly inside Django views.
 
-(That's eight, three more than the "five real forks" the brief asks for —
-leaving all of them in since each was a genuine decision point, not padding.)
+**Why:** Two of the spec's required properties — streaming and checkpoint-based
+resumability — are naturally suited to an async Python service and awkward to
+retrofit onto Django's request/response model without ASGI/Channels work we didn't
+have prior experience with. Keeping the graph standalone also let us iterate on
+node logic directly (via scripts/tests) without spinning up the full Django stack
+on every change — a real velocity difference given the timeline. The spec
+explicitly names this as a legitimate, defensible split, which we took as
+permission rather than a shortcut.
+
+**Cost of this choice:** one extra internal HTTP hop, and two processes to run
+instead of one. Acceptable given the above.
+
+### 2. Which parts of the data layer get MCP-wrapped, vs. plain internal functions
+
+**Chose:** `search_policy`, `get_clause`, and `compute_payout` are real MCP tools
+with explicit read-only/idempotent annotations. `get_claim_history` stays a plain
+internal function. `flag_for_review` is MCP, read-write, gated behind a valid,
+reasoned Override — it cannot fire on its own.
+
+**Rejected:** Wrapping every data-layer call in MCP for surface-area completeness,
+or conversely doing the minimum literal "one tool" the P0 floor asked for.
+
+**Why:** MCP earns its place where the tool boundary matters for auditability or
+mutation safety — retrieval and payout computation are exactly the load-bearing,
+citation-and-computation-critical calls the brief cares about being traceable and
+deterministic. `get_claim_history` is a read of internal records with no
+governance/citation role, so MCP-wrapping it added protocol overhead without
+adding auditability. `flag_for_review` being MCP and explicitly gated by a human
+action (not LLM-invokable, not free-standing) is the direct answer to "how do read
+and write tools differ structurally" — the mutating tool is reachable only through
+the same interrupt/confirmation pathway a human decision already goes through.
+
+### 3. Extraction determinism: pinning temperature=0 after finding it wasn't set
+
+**Chose:** Pin both extraction and explanation LLM calls to temperature=0, after
+discovering they'd been running on the API default (effectively 1.0).
+
+**Rejected:** Leaving temperature unset, or treating high variance purely as an
+"identity bias" finding without checking the more basic cause first.
+
+**Why:** Early consistency testing (Gap 1) showed several claims where every
+variant type — including line-item reordering, which shouldn't matter semantically
+— flipped the outcome identically. That pattern pointed to base-run instability,
+not identity-driven bias. Checking temperature confirmed it: unset, defaulting to
+1.0. Pinning to 0 dropped cross-variant drift from 26.7% to 21.3%, and same-claim
+repeat-run drift (a genuine noise-floor measurement we added specifically to
+interpret this) came in at 4.2%. This is also philosophically consistent with the
+system's core principle — if the rules engine must be deterministic, the extraction
+step feeding it should be as deterministic as the model allows, not left to
+whatever the API defaults to.
+
+**What's still open:** temperature=0 did not fully eliminate variance on complex,
+multi-item extraction (see EVIDENCE.md §6.2 — CLM-013/014/019 residual drift). We
+diagnose this as a real limit of the current extraction model on itemization tasks,
+not something prompting alone fixed.
+
+### 4. What "Override" is allowed to change, and what it only records
+
+**Chose:** Override never lets a typed number become the system's payout of
+record. `Decision.amount` remains whatever `compute_payout` produced. The
+adjuster's proposed replacement figure and required reason are captured as
+separate, clearly-labeled audit fields (`override_proposed_amount`,
+`override_reason`) — visible for human review downstream, structurally incapable
+of feeding back into `compute_payout` or the automated decision.
+
+**Rejected:** Letting an override's typed amount directly replace `Decision.amount`
+in the same flow.
+
+**Why:** This is the same non-negotiable principle applied to a place it's easy to
+miss — the danger isn't only "can the LLM produce a number," it's "can any
+free-text human input become the system's payout of record without going through
+the deterministic engine." Allowing a typed override amount to silently become the
+new `Decision.amount` would reopen exactly the hole the architecture is built to
+close, just via a human instead of a model. We initially shipped Override *without*
+capturing a reason or proposed amount at all — a real gap, caught in review, fixed
+by adding the audit fields without touching how `Decision.amount` is produced.
+
+### 5. What "governs" a claim for eligibility vs. what's available to cite in the
+explanation
+
+**Chose:** After `eligibility_evaluation` runs, an `evidence_reconciliation` step
+takes the exact clause IDs actually used to compute the decision and guarantees
+they're present in `retrieved_clauses` — fetching any missing ones directly via
+`get_clause` — before `explanation` runs.
+
+**Rejected:** Trusting that whatever `policy_retrieval`'s top-k search returned
+would always include every clause eligibility actually used.
+
+**Why:** We found a real case (CLM-018) where eligibility correctly applied a
+diagnostic cap clause that fell outside the retrieval step's top-k cutoff — meaning
+the decision was correct, but the explanation had no way to cite the clause that
+actually drove it. That's a subtler and more serious problem than a wrong citation:
+it's a decision that's right but not fully auditable. The fix guarantees the set of
+citable evidence always contains, at minimum, everything that actually governed the
+outcome, independent of retrieval ranking. Groundedness measurement went from
+94.4% to 100% after this fix, and — more importantly — the fix targets the actual
+root cause (a coverage gap between two clause sets) rather than the symptom.
+
+## Additional decisions (not one of the five)
+
+These were real forks; they sit here so the five above stay the ones that
+changed the product architecture rather than a padded list.
+
+- **Streaming transport: Django proxy vs. frontend hitting agent-service
+  directly.** Django proxies. Chosen because it keeps the frontend's contract
+  to one backend and lets Django persist audit-log entries as a side effect of
+  relaying each chunk. Confirmed by the isolated 5-chunk spike (see below).
+- **What the LLM extracts vs. what's given structurally.** `policy_id` and
+  `policy_start_date` come from the submission form; only
+  `ExtractedNarrativeFacts` is the LLM's structured-output target. `ClaimFacts`
+  merges the two in the extraction node.
+- **Structured rule table vs. NLP-parsed clause prose.** `compute_payout` runs
+  a hand-authored Python rule table keyed by clause ID
+  (`rules/eligibility.py`), cross-checked against fixture markdown. A generic
+  clause-interpreter would need an LLM in the loop or a fragile parser.
+- **Evidence tags vs. LLM-resolved coverage.** The extractor tags what the
+  narrative asserts; `rules/eligibility.py` maps those tags to coverage. This
+  is how §7.1.4 gates §4.2.9 and §3.1.5 waives §3.1.2 without the LLM deciding
+  coverage.
+- **Groundedness checking lives in `explanation`, not in `compute_payout`.**
+  Mixing the two conflated computation with citation verification and broke
+  engine unit tests with a partial clause list. The checker is deterministic
+  and emits `citation_not_retrieved`, `citation_not_in_narrative`, and
+  `content_mismatch`.
+- **MCP transport: in-process vs. subprocess/stdio.** In-process
+  `Client(server)` — a process boundary would add operational complexity with
+  no auditability benefit here. Swapping later only changes how the client is
+  constructed.
+- **All conditional routing lives in `build_graph.py`, never inside a node.**
+  Nodes report facts; `_after_extraction`, `_after_router`, `_after_retrieval`,
+  `_after_evidence_reconciliation`, and `_after_ui` decide the next hop. A
+  clean claim is 10 completed nodes then a confirmation pause; resume with
+  approve is the 11th execution (`AUDIT.md` traces one).
+- **Confirmation interrupt is a separate node from escalation.** `escalation`
+  pauses when the graph cannot decide; `commit_decision` pauses when it can.
+  Eval auto-resumes confirmation with `approve`; it does not auto-resume
+  escalation.
+
+## Token budget (context pack)
+
+Per-claim packed context (narrative + facts JSON + retrieved clause bodies) is
+capped at `CLAIM_CONTEXT_TOKEN_BUDGET` (3500, ~4 chars/token) in
+`graph/context_budget.py`. Drop order is explicit, not truncation: (1) clauses
+at or below the coverage-hit relevance floor, lowest score first; (2) if still
+over, drop the least-recently-relevant peril's clauses (`claim_facts.perils`
+last-to-first; unassigned/admin first). Never drop the last remaining clause.
+A drop writes `CONTEXT_BUDGET_DROP` to `audit_log` and `context_drop` on state
+so explanation knows what left the evidence set.
 
 ## Streaming spike (result)
 
@@ -194,6 +285,11 @@ t≈5s with ~0s gaps between them. Conclusion: `StreamingHttpResponse` + `httpx.
 on Django's dev server streams correctly end-to-end; proceeding with the Django-
 proxy design as planned, no ASGI/Channels rework needed for P0.
 
+Re-measured 2026-09-14 through the live Django proxy (`spike_client_test.py` →
+`/api/spike/stream/`): five chunks, gaps 1.003–1.011s, total 5.884s. Same
+incremental result; the real claim SSE path (`node_complete` /
+`awaiting_confirmation` / `escalated` / `done`) stays on this proxy.
+
 ## Eval harness (`agent-service/eval/run_eval.py`)
 
 Runs all 25 fixtures through the REAL compiled graph (real MCP tools, real
@@ -215,19 +311,23 @@ the scoring logic itself with synthetic data and a fake graph object, with
 no API key needed. Only actually *running* `eval/run_eval.py` end-to-end
 needs the real key; see EVIDENCE.md for those results once it's been run.
 
-## What was cut
+## What we cut, explicitly
 
+- **LangSmith tracing (P2):** Requires an external account/service, which
+  conflicts directly with the brief's own constraint ("no external services beyond
+  the LLM, no accounts"). Not pursued for this reason, not for lack of time.
+- **Multi-turn adjuster follow-up (P1):** cut. The fifth UI block (`risk_signal`)
+  is in; conversation-style follow-up is not. Real engineering cost (reference
+  resolution, conversation state) for a UX improvement, not a trust/auditability
+  one — lowest-leverage item on the P1 list given the time available.
+- **Calibration and a second prompt/retrieval variant (P2):** not attempted;
+  flagged as the next thing worth doing with more time, not evidence we chose to
+  skip measuring.
 - **Keyword retrieval's coverage-hit threshold is hand-calibrated, not
-  principled.** `policy_retrieval` needs to distinguish "found a genuinely
-  relevant clause" from "coincidentally shares a common word like 'damage'
-  with an unrelated clause" to make the empty-retrieval degradation path
-  (mode 1) actually fire only when it should. The threshold
-  (`MIN_COVERAGE_RELEVANCE = 0.5` in `graph/nodes/retrieval.py`) was picked
-  by inspecting scores on this fixture set, not derived from anything
-  principled — it would need real tuning (or embeddings) against a larger,
-  more varied policy corpus. Flagging this now rather than presenting the
-  keyword scorer as more robust than it is; see EVIDENCE.md's failure
-  analysis for where this could bite in practice.
+  principled.** `MIN_COVERAGE_RELEVANCE = 0.5` was picked by inspecting scores
+  on this fixture set. It would need real tuning (or embeddings) against a
+  larger corpus. Flagging this rather than presenting the keyword scorer as
+  more robust than it is.
 
 ## Where AI was delegated, and where it was wrong
 
@@ -288,9 +388,11 @@ wrong, not just where it went right:
   correct, and checking library internals rather than trusting a
   plausible-looking keyword argument is the more reliable path.
 - **A stale number in my own documentation.** `build_graph.py`'s docstring
-  claimed a clean claim takes "8 node executions" — off by one; the real
-  count (verified in `tests/test_build_graph.py` and traced concretely in
-  `AUDIT.md`) is 9. Caught only during a final consistency pass across
+  claimed a clean claim takes "8 node executions" — off by one, then off
+  again after `evidence_reconciliation` was added; the real count (verified
+  in `tests/test_build_graph.py` and traced in `AUDIT.md`) is 10 completed
+  nodes before the confirmation pause. Caught only during a consistency pass
+  across
   `DESIGN.md`/`README.md`/`AUDIT.md`, not when it was first written. A
   reminder that documentation claims need the same "verify, don't assume"
   discipline as code, especially when the same fact gets restated in

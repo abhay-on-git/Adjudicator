@@ -35,6 +35,8 @@ const EVENT_LABELS: Record<string, string> = {
   retrieval_complete: 'Policy found',
   retrieval_empty: 'No governing policy',
   eligibility_complete: 'Eligibility computed',
+  evidence_reconciled: 'Decision evidence verified',
+  evidence_reconciliation_failed: 'Decision evidence unavailable',
   risk_complete: 'Risk checked',
   decision_composed: 'Decision composed',
   escalated: 'Escalated',
@@ -42,7 +44,13 @@ const EVENT_LABELS: Record<string, string> = {
   llm_retry: 'Model retry',
   llm_unavailable: 'Model unavailable',
   explanation_complete: 'Explanation written',
+  groundedness_violation: 'Groundedness violation',
+  context_budget_drop: 'Context budget drop',
   ui_composed: 'Dossier composed',
+  decision_confirmed: 'Decision confirmed',
+  decision_overridden: 'Decision overridden',
+  decision_documents_requested: 'Documents requested',
+  review_flagged: 'Manual review flagged',
 }
 
 const OUTCOME_LABELS: Record<string, string> = {

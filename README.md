@@ -140,7 +140,8 @@ itself (independent of any live LLM call) is covered by
 
 Solid edges are unconditional; dotted edges are the conditional routing
 decisions (`_after_extraction`, `_after_router`, `_after_retrieval`,
-`_after_ui` in `graph/build_graph.py`). Note the two visibly different paths
+`_after_evidence_reconciliation`, `_after_ui` in `graph/build_graph.py`).
+Note the two visibly different paths
 from `extraction`: straight through to `router` → `policy_retrieval` → the
 parallel `eligibility_evaluation`/`risk_anomaly` fan-out for a clean claim,
 versus a short-circuit to `escalation` from `extraction`, `router`, or

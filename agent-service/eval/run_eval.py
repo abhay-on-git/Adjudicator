@@ -5,6 +5,7 @@ the rest of the test suite, which mocks the LLM seams deliberately).
 
 Suites (`--suite`):
   accuracy     — outcome accuracy, groundedness, injection resistance
+  groundedness — 25 golden claims, strict citation-content score only
   consistency  — Gap 1: irrelevant-variation matrix (name/gender/city/
                  phrasing/line-item order) vs each claim's own base run
   stability    — Gap 2: identical claim, 5 repeats, spanning claim types
@@ -31,6 +32,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
+from langgraph.types import Command
 
 from eval.variants import (
     PHRASING_VARIANTS,
@@ -42,6 +44,8 @@ from eval.variants import (
     build_variants,
 )
 from graph.build_graph import compile_graph
+from graph.interrupts import KIND_CONFIRMATION, interrupt_kind
+from graph.schemas import InteractiveAction
 from graph.state import initial_state
 
 load_dotenv()
@@ -112,10 +116,22 @@ async def run_single(graph, claim: dict, run_id: str, variant_label: str = "orig
     started = time.perf_counter()
 
     try:
-        async for chunk in graph.astream(initial_state(run_id, raw_input), config=config, stream_mode="updates"):
-            if "__interrupt__" in chunk:
-                break
-            node_path.extend(chunk.keys())
+        inputs: list = [initial_state(run_id, raw_input)]
+        confirmation_autoresumed = False
+        while inputs:
+            graph_input = inputs.pop(0)
+            async for chunk in graph.astream(graph_input, config=config, stream_mode="updates"):
+                if "__interrupt__" in chunk:
+                    kind = interrupt_kind(chunk["__interrupt__"][0])
+                    # Eval is measuring the computed decision, not a human
+                    # adjuster. Auto-confirm with approve so hop counts and
+                    # interrupted=False stay comparable to P0; do NOT auto-
+                    # resume escalation (that would invent a human resolution).
+                    if kind == KIND_CONFIRMATION and not confirmation_autoresumed:
+                        confirmation_autoresumed = True
+                        inputs.append(Command(resume=InteractiveAction.APPROVE.value))
+                    break
+                node_path.extend(chunk.keys())
     except Exception as exc:  # noqa: BLE001 - a run failing outright IS a reportable eval result, not a crash
         error = f"{type(exc).__name__}: {exc}"
 
@@ -660,7 +676,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the adjudication eval harness.")
     parser.add_argument(
         "--suite",
-        choices=["accuracy", "consistency", "stability", "cost", "all"],
+        choices=["accuracy", "groundedness", "consistency", "stability", "cost", "all"],
         default="all",
     )
     parser.add_argument(
@@ -705,6 +721,23 @@ async def main(argv: list[str] | None = None) -> None:
     graph, conn = await compile_graph(EVAL_CHECKPOINT_DB)
     try:
         partial: dict = {}
+        if args.suite == "groundedness":
+            prefix = args.run_prefix or "strict-groundedness-"
+            results = [
+                await run_single(
+                    graph,
+                    claim,
+                    f"{prefix}{claim['claim_id']}",
+                    variant_label="strict_groundedness",
+                )
+                for claim in claims
+            ]
+            partial.update(
+                {
+                    "groundedness": score_groundedness(results),
+                    "groundedness_raw_results": [asdict(r) for r in results],
+                }
+            )
         if args.suite in ("accuracy", "all"):
             results = [await run_single(graph, claim, claim["claim_id"]) for claim in claims]
             repeat_consistency = [

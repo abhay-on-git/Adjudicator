@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.context_budget import apply_drop_policy, pack_audit_detail
 from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, ClauseRef, Peril
 from graph.state import AdjudicationState
@@ -112,6 +113,11 @@ async def policy_retrieval(state: AdjudicationState) -> dict:
     has_coverage_hit = any(c.relevance_score > MIN_COVERAGE_RELEVANCE for c in coverage_clauses)
     unique_ids = sorted({(c.policy_id, c.clause_id) for c in all_clauses})
 
+    envelope = state.get("normalized_envelope") or {}
+    narrative = envelope.get("narrative_text") or ""
+    pack = apply_drop_policy(narrative, facts, all_clauses)
+    stored_clauses = pack.kept if has_coverage_hit else all_clauses
+
     if has_coverage_hit:
         event_type = AuditEventType.RETRIEVAL_COMPLETE
         detail = (
@@ -128,12 +134,40 @@ async def policy_retrieval(state: AdjudicationState) -> dict:
             "clauses (e.g. deductible) that always match."
         )
 
+    audit_events = [
+        AuditEvent(event_type=event_type, node="policy_retrieval", detail=detail, timestamp=_now_iso())
+    ]
+    context_drop = None
+    if has_coverage_hit and pack.dropped:
+        context_drop = {
+            "budget": pack.budget,
+            "tokens_before": pack.tokens_before,
+            "tokens_after": pack.tokens_after,
+            "dropped": [
+                {
+                    "clause_id": d.clause_id,
+                    "policy_id": d.policy_id,
+                    "relevance_score": d.relevance_score,
+                    "reason": d.reason,
+                    "tokens": d.tokens,
+                }
+                for d in pack.dropped
+            ],
+        }
+        audit_events.append(
+            AuditEvent(
+                event_type=AuditEventType.CONTEXT_BUDGET_DROP,
+                node="policy_retrieval",
+                detail=pack_audit_detail(pack),
+                timestamp=_now_iso(),
+            )
+        )
+
     result: dict = {
-        "retrieved_clauses": all_clauses,
+        "retrieved_clauses": stored_clauses,
         "retrieval_had_coverage_hit": has_coverage_hit,
-        "audit_log": [
-            AuditEvent(event_type=event_type, node="policy_retrieval", detail=detail, timestamp=_now_iso())
-        ],
+        "context_drop": context_drop,
+        "audit_log": audit_events,
     }
     if not has_coverage_hit:
         result["escalation_reason"] = "no governing policy found"

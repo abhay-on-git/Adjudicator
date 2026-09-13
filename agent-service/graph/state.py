@@ -91,6 +91,10 @@ class AdjudicationState(TypedDict):
     # --- Retrieval ------------------------------------------------------
     retrieved_clauses: Annotated[list[ClauseRef], merge_clauses_by_id]
     retrieval_had_coverage_hit: bool
+    context_drop: dict | None
+    # overwrite: last budget-pack report (dropped clause ids, token delta).
+    # None when nothing was dropped. Explanation reads this so a drop is
+    # never silent truncation the writer does not know about.
     # overwrite: a dedicated boolean signal (rather than re-deriving from
     # retrieved_clauses or parsing audit_log strings) for the graph's
     # conditional edge to decide "escalate — no governing policy found"
@@ -100,6 +104,10 @@ class AdjudicationState(TypedDict):
     # --- Parallel fan-out: eligibility + risk (disjoint keys, see module docstring)
     eligibility_result: EligibilityResult | None  # overwrite: deterministic, single source of truth
     risk_result: RiskResult | None  # overwrite: deterministic, single source of truth
+    evidence_reconciliation_failed: bool
+    # overwrite: explicit routing signal. If exact lookup cannot resolve a
+    # clause the rules engine used, explanation is skipped and the graph
+    # escalates rather than presenting an ungrounded decision.
 
     # --- Decision -------------------------------------------------------
     decision: Decision | None  # overwrite: one deterministic composition step
@@ -111,8 +119,12 @@ class AdjudicationState(TypedDict):
     # reflects every violation ever detected for this claim, not just the
     # last explanation pass.
 
-    # --- Escalation -------------------------------------------------------
+    # --- Escalation / confirmation ---------------------------------------
     escalation_reason: str | None  # overwrite: at most one active escalation reason at a time
+    decision_committed: bool
+    # overwrite: False until commit_decision's confirmation interrupt resolves
+    # with InteractiveAction.APPROVE. Override / request_documents leave this
+    # False so an unconfirmed computed amount is never treated as final.
 
     # --- Audit trail --------------------------------------------------------
     audit_log: Annotated[list[AuditEvent], operator.add]
@@ -143,12 +155,15 @@ def initial_state(claim_id: str, raw_input: dict) -> AdjudicationState:
         routing=None,
         retrieved_clauses=[],
         retrieval_had_coverage_hit=False,
+        context_drop=None,
         eligibility_result=None,
         risk_result=None,
+        evidence_reconciliation_failed=False,
         decision=None,
         explanation_text="",
         groundedness_violations=[],
         escalation_reason=None,
+        decision_committed=False,
         audit_log=[],
         node_metrics={},
         ui_spec=None,

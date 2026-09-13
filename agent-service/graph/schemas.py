@@ -250,6 +250,8 @@ class AuditEventType(str, Enum):
     RETRIEVAL_COMPLETE = "retrieval_complete"
     RETRIEVAL_EMPTY = "retrieval_empty"
     ELIGIBILITY_COMPLETE = "eligibility_complete"
+    EVIDENCE_RECONCILED = "evidence_reconciled"
+    EVIDENCE_RECONCILIATION_FAILED = "evidence_reconciliation_failed"
     RISK_COMPLETE = "risk_complete"
     DECISION_COMPOSED = "decision_composed"
     ESCALATED = "escalated"
@@ -258,7 +260,12 @@ class AuditEventType(str, Enum):
     LLM_UNAVAILABLE = "llm_unavailable"
     EXPLANATION_COMPLETE = "explanation_complete"
     GROUNDEDNESS_VIOLATION = "groundedness_violation"
+    CONTEXT_BUDGET_DROP = "context_budget_drop"
     UI_COMPOSED = "ui_composed"
+    DECISION_CONFIRMED = "decision_confirmed"
+    DECISION_OVERRIDDEN = "decision_overridden"
+    DECISION_DOCUMENTS_REQUESTED = "decision_documents_requested"
+    REVIEW_FLAGGED = "review_flagged"
 
 
 class AuditEvent(BaseModel):
@@ -266,6 +273,19 @@ class AuditEvent(BaseModel):
     node: str
     detail: str
     timestamp: str
+    # Structured override metadata. These stay on the audit event rather than
+    # Decision so a human's proposed figure can never become payout-of-record.
+    original_outcome: Outcome | None = None
+    original_amount: float | None = None
+    override_reason: str | None = None
+    override_proposed_amount: int | None = Field(default=None, ge=0)
+
+
+class ReviewFlagResult(BaseModel):
+    flag_id: str
+    claim_id: str
+    reason: str = Field(min_length=1)
+    flagged_at: str
 
 
 # ---------------------------------------------------------------------------
@@ -330,28 +350,27 @@ class InteractiveActionsBlock(BaseModel):
     thread_id: str
     available_actions: list[InteractiveAction] = Field(
         default_factory=list,
-        description="Empty when the decision is already final (P0 has no confirmation "
-        "interrupt — see DESIGN.md open question #2, deferred to P1). Non-empty only "
-        "when the graph is actually paused at `escalation` for this claim.",
+        description="Empty once a decision is committed (or there is nothing to resume). "
+        "Non-empty while paused at `commit_decision` (confirmation) or `escalation`.",
     )
     resumes_at_node: str | None = Field(
         default=None,
         description="Which node the graph resumes at when one of these actions is "
-        "submitted. None when there is no pending interrupt (P0: only 'escalation' "
-        "is ever a real value here, and only while the claim is actually paused).",
+        "submitted: `commit_decision` for confirmation, `escalation` for missing-"
+        "info / degradation pauses. None when there is no pending interrupt.",
     )
     is_pending: bool = False
 
 
 class RiskSignalBlock(BaseModel):
-    """The 4th (+Unknown-fallback) block type: surfaces WHY a claim was
-    flagged risky/escalated, separately from the outcome block's confidence
-    number — an adjuster verifying a decision needs the flags, not just a
-    single number."""
+    """Fifth typed UI block: surfaces WHY a claim was flagged, separately
+    from the outcome block's confidence number. Always present; empty flags
+    is a clean "no anomalies" state, not an omitted panel."""
 
     type: str = "risk_signal"
     severity: RiskSeverity
     flags: list[str]
+    duplicate_claim_ids: list[str] = Field(default_factory=list)
 
 
 class DecisionUISpec(BaseModel):

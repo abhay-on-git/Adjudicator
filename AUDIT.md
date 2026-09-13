@@ -36,10 +36,12 @@ Mocked LLM outputs used for this trace (standing in for the real model):
 
 ## Node-by-node trace
 
-The claim took **9 node executions**, never touching `escalation` — this is
+The claim took **10 node executions**, never touching `escalation` — this is
 the "clean claim, fewer hops" property `build_graph.py` is designed to
 guarantee (see that file's own docstring for the contrast with a
-missing-field or multi-peril claim).
+missing-field or multi-peril claim). After this trace the graph now pauses
+at `commit_decision` for confirmation (P1); those 10 executions are the
+completed nodes *before* that interrupt.
 
 | # | Node | What happened |
 |---|------|----------------|
@@ -50,8 +52,9 @@ missing-field or multi-peril claim).
 | 5 | `eligibility_evaluation` | Real MCP `compute_payout` call: `total_claimed=8000.0`, `total_payable=3000.0` (₹5,000 deductible applied per `§2.3`), `needs_escalation=False`. |
 | 6 | `risk_anomaly` | `severity=none`, no flags — no duplicate claims, filed after loss date, no injection detected, amount not suspiciously round or undocumented. |
 | 7 | `decision_composition` | `outcome=approve`, `amount=3000.0`, `confidence=1.00` (no risk penalty, no missing-info penalty). |
-| 8 | `explanation` | LLM (mocked) narrative generated; both cited clause IDs (`§2.3`, `§4.2.1`) verified present in `retrieved_clauses` — 0 groundedness violations. |
-| 9 | `ui_composition` | 5 UI blocks composed. |
+| 8 | `evidence_reconciliation` | Verified every `EligibilityResult.clauses_used` ID was present; any missing ID would be exact-fetched through MCP `get_clause` before explanation. |
+| 9 | `explanation` | LLM (mocked) narrative generated; both cited clause IDs (`§2.3`, `§4.2.1`) verified present in `retrieved_clauses` — 0 groundedness violations. |
+| 10 | `ui_composition` | 5 UI blocks composed. |
 
 ## Final state
 

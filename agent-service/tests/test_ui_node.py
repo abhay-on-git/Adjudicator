@@ -61,14 +61,44 @@ def test_outcome_block_matches_decision():
     assert outcome_block["confidence"] == 0.9
 
 
-def test_interactive_block_has_no_pending_action_for_non_escalated_decision():
-    """P0 has no confirmation interrupt — a PARTIAL/APPROVE/DENY decision is
-    already final, so there is nothing to resume."""
+def test_interactive_block_is_pending_at_commit_decision_for_non_escalated_decision():
+    """Approve/deny/partial pause at commit_decision for human confirmation."""
     result = ui_composition(make_state())
     interactive_block = result["ui_spec"]["blocks"][3]
-    assert interactive_block["is_pending"] is False
-    assert interactive_block["resumes_at_node"] is None
-    assert interactive_block["available_actions"] == []
+    assert interactive_block["is_pending"] is True
+    assert interactive_block["resumes_at_node"] == "commit_decision"
+    assert set(interactive_block["available_actions"]) == {"approve", "override", "request_documents"}
+
+
+def test_risk_signal_block_renders_flags_and_keeps_clean_empty_state():
+    """Always emit `risk_signal`. Flagged claims list the real RiskResult
+    flags; a clean claim still shows the block with empty flags (the frontend
+    copy is "No anomalies detected.") rather than omitting the panel."""
+    flagged = make_state()
+    flagged["risk_result"] = RiskResult(
+        severity=RiskSeverity.HIGH,
+        flags=[
+            "filed_before_loss_date",
+            "injection_attempt_detected",
+            "possible_duplicate_claim",
+        ],
+        duplicate_claim_ids=["CLM-OLD-1"],
+    )
+    flagged_block = ui_composition(flagged)["ui_spec"]["blocks"][4]
+    assert flagged_block["type"] == "risk_signal"
+    assert flagged_block["severity"] == "high"
+    assert flagged_block["flags"] == [
+        "filed_before_loss_date",
+        "injection_attempt_detected",
+        "possible_duplicate_claim",
+    ]
+    assert flagged_block["duplicate_claim_ids"] == ["CLM-OLD-1"]
+
+    clean_block = ui_composition(make_state())["ui_spec"]["blocks"][4]
+    assert clean_block["type"] == "risk_signal"
+    assert clean_block["severity"] == "none"
+    assert clean_block["flags"] == []
+    assert clean_block["duplicate_claim_ids"] == []
 
 
 def test_interactive_block_is_pending_and_resumable_for_escalated_decision():

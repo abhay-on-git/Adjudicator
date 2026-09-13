@@ -76,13 +76,20 @@ def ui_composition(state: AdjudicationState) -> dict:
                 is_pending=True,
             )
             if decision.outcome.value == "escalate"
-            # P0 has no confirmation interrupt (deferred to P1 — see DESIGN.md
-            # open question #2), so a non-escalated decision has genuinely
-            # nothing pending to resume; the block says so rather than
-            # offering actions that wouldn't do anything.
-            else InteractiveActionsBlock(claim_id=claim_id, thread_id=claim_id, is_pending=False)
+            else InteractiveActionsBlock(
+                claim_id=claim_id, thread_id=claim_id,
+                available_actions=[
+                    InteractiveAction.APPROVE, InteractiveAction.OVERRIDE, InteractiveAction.REQUEST_DOCUMENTS,
+                ],
+                resumes_at_node="commit_decision",
+                is_pending=True,
+            )
         ).model_dump(mode="json"),
-        RiskSignalBlock(severity=risk.severity, flags=risk.flags).model_dump(mode="json"),
+        RiskSignalBlock(
+            severity=risk.severity,
+            flags=risk.flags,
+            duplicate_claim_ids=risk.duplicate_claim_ids,
+        ).model_dump(mode="json"),
     ]
 
     ui_spec = DecisionUISpec(claim_id=claim_id, blocks=blocks)

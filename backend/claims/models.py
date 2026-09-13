@@ -14,11 +14,13 @@ class Claim(models.Model):
     STATUS_PENDING = "pending"
     STATUS_IN_PROGRESS = "in_progress"
     STATUS_ESCALATED = "escalated"
+    STATUS_AWAITING_CONFIRM = "awaiting_confirm"
     STATUS_DONE = "done"
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending"),
         (STATUS_IN_PROGRESS, "In Progress"),
         (STATUS_ESCALATED, "Escalated"),
+        (STATUS_AWAITING_CONFIRM, "Awaiting confirmation"),
         (STATUS_DONE, "Done"),
     ]
 
@@ -30,7 +32,7 @@ class Claim(models.Model):
     claimant_gender = models.CharField(max_length=32)
     claimant_city = models.CharField(max_length=200)
     narrative_text = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -67,6 +69,10 @@ class AuditEvent(models.Model):
     node = models.CharField(max_length=64)
     detail = models.TextField()
     occurred_at = models.CharField(max_length=64)  # ISO timestamp, verbatim from agent-service
+    original_outcome = models.CharField(max_length=20, null=True, blank=True)
+    original_amount = models.FloatField(null=True, blank=True)
+    override_reason = models.TextField(null=True, blank=True)
+    override_proposed_amount = models.IntegerField(null=True, blank=True)
     recorded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

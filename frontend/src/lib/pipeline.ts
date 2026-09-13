@@ -1,4 +1,4 @@
-export type PipelineStatus = 'streaming' | 'escalated' | 'done' | 'error'
+export type PipelineStatus = 'streaming' | 'escalated' | 'awaiting_confirmation' | 'done' | 'error'
 export type StageState = 'waiting' | 'active' | 'done' | 'skipped'
 
 export interface PipelineStage {
@@ -20,8 +20,10 @@ export const PARALLEL: PipelineStage[] = [
 
 export const POST_PARALLEL: PipelineStage[] = [
   { id: 'decision_composition', label: 'Decision' },
+  { id: 'evidence_reconciliation', label: 'Verify evidence' },
   { id: 'explanation', label: 'Explanation' },
   { id: 'ui_composition', label: 'Compose' },
+  { id: 'commit_decision', label: 'Confirm' },
 ]
 
 export const ESCALATION_STAGE: PipelineStage = {
@@ -46,13 +48,17 @@ export function deriveStageStates(
     states[id] = done.has(id) ? 'done' : 'waiting'
   }
 
-  const terminal = status === 'done' || status === 'error' || status === 'escalated'
+  const terminal =
+    status === 'done' || status === 'error' || status === 'escalated' || status === 'awaiting_confirmation'
   if (terminal) {
     for (const id of ALL_STAGE_IDS) {
       if (states[id] === 'waiting') states[id] = 'skipped'
     }
     if (status === 'escalated' && !done.has(ESCALATION_STAGE.id)) {
       states[ESCALATION_STAGE.id] = 'active'
+    }
+    if (status === 'awaiting_confirmation') {
+      states['commit_decision'] = done.has('commit_decision') ? 'done' : 'active'
     }
     return states
   }
@@ -86,6 +92,7 @@ export function deriveStageStates(
 export function pathCopy(completedCount: number, status: PipelineStatus, fastPath?: boolean): string {
   const steps = `${completedCount} step${completedCount === 1 ? '' : 's'}`
   if (status === 'escalated') return `${steps} · review path`
+  if (status === 'awaiting_confirmation') return `${steps} · awaiting confirm`
   if (status === 'error') return `${steps} · interrupted`
   if (fastPath) return `${steps} · clean path`
   if (status === 'done') return `${steps} · complete`

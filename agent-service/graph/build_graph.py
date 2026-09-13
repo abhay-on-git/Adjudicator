@@ -1,8 +1,9 @@
-"""Wires the 10 nodes into the compiled LangGraph StateGraph.
+"""Wires the 12 nodes into the compiled LangGraph StateGraph.
 
-Node count matches the spec's required table exactly: intake_normalize,
-extraction, router, policy_retrieval, eligibility_evaluation, risk_anomaly,
-decision_composition, explanation, escalation, ui_composition.
+Node count: intake_normalize, extraction, router, policy_retrieval,
+eligibility_evaluation, risk_anomaly, decision_composition,
+evidence_reconciliation, explanation, ui_composition, commit_decision,
+escalation.
 
 Control flow (all conditional routing lives HERE, not inside nodes — see
 every node module's docstring: nodes report facts, the graph decides):
@@ -15,21 +16,24 @@ every node module's docstring: nodes report facts, the graph decides):
     policy_retrieval --[no coverage hit]--> escalation
     policy_retrieval --[else]--> {eligibility_evaluation, risk_anomaly}  (parallel fan-out)
     {eligibility_evaluation, risk_anomaly} --> decision_composition       (fan-in)
-    decision_composition -> explanation -> ui_composition
+    decision_composition -> evidence_reconciliation
+    evidence_reconciliation --[exact clauses available]--> explanation -> ui_composition
+    evidence_reconciliation --[missing exact clause]--> escalation
     ui_composition --[outcome == escalate]--> escalation
-    ui_composition --[else]--> END
-    escalation -> END   (after interrupt() returns on resume)
+    ui_composition --[else]--> commit_decision
+    commit_decision -> END   (after confirmation interrupt() returns on resume)
+    escalation -> END        (after interrupt() returns on resume)
 
-A clean single-peril claim never touches risk_anomaly's duplicate-history
-scan differently, but DOES skip stright past escalation entirely if nothing
-triggers it — a clean single-line claim is
-intake_normalize -> extraction -> router -> policy_retrieval ->
-{eligibility_evaluation, risk_anomaly} -> decision_composition ->
-explanation -> ui_composition -> END: 9 node executions (counting both
-parallel branches). A degraded claim short-circuits to `escalation` from
-`extraction`, `router`, or `policy_retrieval` instead, in as few as 3 hops —
-see tests/test_build_graph.py for both cases asserted directly, and
-AUDIT.md for a concrete 9-hop trace of a real clean claim (CLM-001).
+A clean single-peril claim skips escalation and pauses at `commit_decision`
+for human confirmation: intake_normalize -> extraction -> router ->
+policy_retrieval -> {eligibility_evaluation, risk_anomaly} ->
+decision_composition -> evidence_reconciliation -> explanation ->
+ui_composition, then interrupt (10 completed node executions before the
+pause). Resume with `approve` runs `commit_decision` (11th execution) and
+ENDs. A degraded claim short-circuits
+to `escalation` from `extraction`, `router`, or `policy_retrieval` instead,
+in as few as 3 hops — see tests/test_build_graph.py for both cases, and
+AUDIT.md for a concrete clean-claim trace.
 
 Mermaid source (regenerate via
 `build_graph().compile().get_graph().draw_mermaid()`; a rendered PNG is
@@ -47,10 +51,13 @@ embedded in the root README.md):
         policy_retrieval -.-> escalation;
         eligibility_evaluation --> decision_composition;
         risk_anomaly --> decision_composition;
-        decision_composition --> explanation;
+        decision_composition --> evidence_reconciliation;
+        evidence_reconciliation -.-> explanation;
+        evidence_reconciliation -.-> escalation;
         explanation --> ui_composition;
+        ui_composition -.-> commit_decision;
         ui_composition -.-> escalation;
-        ui_composition -.-> __end__;
+        commit_decision --> __end__;
         escalation --> __end__;
 """
 
@@ -64,7 +71,9 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 
 from graph import schemas as _schemas_module
+from graph.nodes.commit import commit_decision
 from graph.nodes.decision import decision_composition
+from graph.nodes.evidence import evidence_reconciliation
 from graph.nodes.eligibility import eligibility_evaluation
 from graph.nodes.escalation import escalation
 from graph.nodes.explanation import explanation
@@ -112,7 +121,11 @@ def _after_retrieval(state: AdjudicationState) -> list[str] | str:
 
 def _after_ui(state: AdjudicationState) -> str:
     decision = state["decision"]
-    return "escalation" if decision.outcome == Outcome.ESCALATE else END
+    return "escalation" if decision.outcome == Outcome.ESCALATE else "commit_decision"
+
+
+def _after_evidence_reconciliation(state: AdjudicationState) -> str:
+    return "escalation" if state["evidence_reconciliation_failed"] else "explanation"
 
 
 def build_graph() -> StateGraph:
@@ -128,9 +141,11 @@ def build_graph() -> StateGraph:
     graph.add_node("eligibility_evaluation", eligibility_evaluation)
     graph.add_node("risk_anomaly", risk_anomaly)
     graph.add_node("decision_composition", decision_composition)
+    graph.add_node("evidence_reconciliation", evidence_reconciliation)
     graph.add_node("explanation", explanation)
     graph.add_node("escalation", escalation)
     graph.add_node("ui_composition", ui_composition)
+    graph.add_node("commit_decision", commit_decision)
 
     graph.add_edge(START, "intake_normalize")
     graph.add_edge("intake_normalize", "extraction")
@@ -141,9 +156,15 @@ def build_graph() -> StateGraph:
     )
     graph.add_edge("eligibility_evaluation", "decision_composition")
     graph.add_edge("risk_anomaly", "decision_composition")
-    graph.add_edge("decision_composition", "explanation")
+    graph.add_edge("decision_composition", "evidence_reconciliation")
+    graph.add_conditional_edges(
+        "evidence_reconciliation",
+        _after_evidence_reconciliation,
+        ["escalation", "explanation"],
+    )
     graph.add_edge("explanation", "ui_composition")
-    graph.add_conditional_edges("ui_composition", _after_ui, ["escalation", END])
+    graph.add_conditional_edges("ui_composition", _after_ui, ["escalation", "commit_decision"])
+    graph.add_edge("commit_decision", END)
     graph.add_edge("escalation", END)
 
     return graph
@@ -152,8 +173,8 @@ def build_graph() -> StateGraph:
 async def compile_graph(db_path: str = "checkpoints/adjudicator.sqlite"):
     """Standard compilation with the file-backed async SQLite checkpointer —
     durable across restarts, keyed by thread_id (== claim_id), which is what
-    makes `escalation`'s interrupt/resume actually work across separate HTTP
-    requests (see agent-service's FastAPI routes).
+    makes `escalation` / `commit_decision` interrupt/resume actually work
+    across separate HTTP requests (see agent-service's FastAPI routes).
 
     Built directly from an `aiosqlite` connection (instead of
     `AsyncSqliteSaver.from_conn_string`, which doesn't accept a `serde=`

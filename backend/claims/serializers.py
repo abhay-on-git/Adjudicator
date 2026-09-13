@@ -27,7 +27,16 @@ class ResumeSerializer(serializers.Serializer):
 class AuditEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditEvent
-        fields = ["event_type", "node", "detail", "occurred_at"]
+        fields = [
+            "event_type",
+            "node",
+            "detail",
+            "occurred_at",
+            "original_outcome",
+            "original_amount",
+            "override_reason",
+            "override_proposed_amount",
+        ]
 
 
 class DecisionSerializer(serializers.ModelSerializer):

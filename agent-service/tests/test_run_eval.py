@@ -265,6 +265,12 @@ def test_parse_args_suite_consistency():
     assert args.suite == "consistency"
 
 
+def test_parse_args_suite_groundedness():
+    args = parse_args(["--suite", "groundedness", "--run-prefix", "strict-v1-"])
+    assert args.suite == "groundedness"
+    assert args.run_prefix == "strict-v1-"
+
+
 def test_parse_args_claim_ids_and_result_key():
     args = parse_args(
         ["--suite", "consistency", "--claim-ids", "CLM-001,CLM-013", "--result-key", "temperature_zero_check"]
@@ -283,17 +289,28 @@ class _FakeGraph:
     """Stands in for the compiled LangGraph graph: `astream` replays a fixed
     sequence of `updates`-mode chunks, `aget_state` returns a fixed final
     snapshot — enough to test `run_single`'s RunResult construction without
-    running any real node."""
+    running any real node.
 
-    def __init__(self, chunks, final_values, interrupts=()):
+    If `resume_chunks` is set, a second `astream` call (eval's confirmation
+    auto-resume) yields those instead of looping the first interrupt forever.
+    """
+
+    def __init__(self, chunks, final_values, interrupts=(), resume_chunks=None, resume_interrupts=()):
         self._chunks = chunks
+        self._resume_chunks = resume_chunks
         self._final_snapshot = _FakeSnapshot(final_values, interrupts)
+        self._resume_snapshot = _FakeSnapshot(final_values, resume_interrupts)
+        self._calls = 0
 
     async def astream(self, *args, **kwargs):
-        for chunk in self._chunks:
+        self._calls += 1
+        chunks = self._chunks if self._calls == 1 or self._resume_chunks is None else self._resume_chunks
+        for chunk in chunks:
             yield chunk
 
     async def aget_state(self, config):
+        if self._calls > 1 and self._resume_chunks is not None:
+            return self._resume_snapshot
         return self._final_snapshot
 
 
@@ -347,6 +364,30 @@ async def test_run_single_stops_at_interrupt_and_records_it():
     assert result.interrupted is True
     # node_path stops at the interrupt, never sees the node queued after it
     assert result.node_path == ["router"]
+
+
+@pytest.mark.asyncio
+async def test_run_single_autoresumes_confirmation_interrupt():
+    graph = _FakeGraph(
+        chunks=[
+            {"ui_composition": {}},
+            {"__interrupt__": ({"kind": "confirmation", "reason": "confirm"},)},
+        ],
+        final_values={
+            "decision": _FakeDecision("approve", 3000.0),
+            "eligibility_result": _FakeEligibility(["§2.3"]),
+            "groundedness_violations": [],
+        },
+        interrupts=({"kind": "confirmation"},),
+        resume_chunks=[{"commit_decision": {}}],
+        resume_interrupts=(),
+    )
+    claim = {"claim_id": "CLM-001", "narrative_text": "x"}
+    result = await run_single(graph, claim, "CLM-001")
+    assert result.interrupted is False
+    assert result.outcome == "approve"
+    assert result.node_path == ["ui_composition", "commit_decision"]
+
 
 
 @pytest.mark.asyncio

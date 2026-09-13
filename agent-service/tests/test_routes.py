@@ -18,9 +18,11 @@ import json
 import main
 import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 from graph.nodes import explanation as explanation_module
 from graph.nodes import extraction as extraction_module
 from graph.schemas import ExplanationOutput, ExtractedNarrativeFacts, LineItem, Peril
+from routes import _validate_confirmation_response
 
 
 def _parse_sse(text: str) -> list[tuple[str, dict]]:
@@ -81,28 +83,56 @@ CLEAN_SUBMISSION = {
 }
 
 
-def test_adjudicate_streams_node_events_then_done(client, mock_clean_llm_calls):
+def test_adjudicate_streams_node_events_then_awaits_confirmation(client, mock_clean_llm_calls):
     resp = client.post("/claims/CLM-ROUTE-001/adjudicate", json=CLEAN_SUBMISSION)
     assert resp.status_code == 200
     events = _parse_sse(resp.text)
 
     event_names = [name for name, _ in events]
-    assert event_names[-1] == "done"
+    assert event_names[-1] == "awaiting_confirmation"
     assert "escalated" not in event_names
+    assert "done" not in event_names
     node_complete_nodes = [data["node"] for name, data in events if name == "node_complete"]
-    assert node_complete_nodes == [
+    assert node_complete_nodes[:4] == [
         "intake_normalize", "extraction", "router", "policy_retrieval",
-        "eligibility_evaluation", "risk_anomaly", "decision_composition",
-        "explanation", "ui_composition",
     ]
-    done_data = events[-1][1]
-    assert done_data["decision"]["outcome"] != "escalate"
-    assert done_data["ui_spec"]["blocks"]
+    assert set(node_complete_nodes[4:6]) == {"eligibility_evaluation", "risk_anomaly"}
+    assert node_complete_nodes[6:] == [
+        "decision_composition", "evidence_reconciliation", "explanation", "ui_composition",
+    ]
+    confirm_data = events[-1][1]
+    assert confirm_data["kind"] == "confirmation"
+    assert confirm_data["decision_so_far"]["outcome"] != "escalate"
+
+    status = client.get("/claims/CLM-ROUTE-001").json()
+    assert status["status"] == "awaiting_confirmation"
+
+    resume_resp = client.post("/claims/CLM-ROUTE-001/resume", json={"human_response": "approve"})
+    assert resume_resp.status_code == 200
+    resume_events = _parse_sse(resume_resp.text)
+    assert resume_events[-1][0] == "done"
+    assert [d.get("node") for _, d in resume_events if d.get("node")] == ["commit_decision"]
+    assert resume_events[-1][1]["decision"]["outcome"] != "escalate"
+
+    final_status = client.get("/claims/CLM-ROUTE-001").json()
+    assert final_status["status"] == "done"
 
 
 def test_adjudicate_claim_id_mismatch_rejected(client):
     resp = client.post("/claims/CLM-OTHER/adjudicate", json=CLEAN_SUBMISSION)
     assert resp.status_code == 400
+
+
+def test_override_resume_payload_requires_reason_and_valid_optional_amount():
+    with pytest.raises(HTTPException, match="non-empty reason"):
+        _validate_confirmation_response({"action": "override", "reason": " "})
+    with pytest.raises(HTTPException, match="non-negative integer"):
+        _validate_confirmation_response(
+            {"action": "override", "reason": "Wrong scope", "proposed_amount": 12.5}
+        )
+    _validate_confirmation_response(
+        {"action": "override", "reason": "Wrong scope", "proposed_amount": 60000}
+    )
 
 
 def test_missing_field_escalates_then_resume_completes(client, monkeypatch):

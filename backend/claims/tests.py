@@ -65,6 +65,18 @@ ESCALATED_RUN_CHUNKS = [
                         "reason": "Missing required field(s): ['date_of_loss'].", "decision_so_far": None}),
 ]
 
+CONFIRM_RUN_CHUNKS = [
+    _sse("node_complete", {"claim_id": "CLM-DJ-003", "node": "ui_composition",
+                            "update": {"ui_spec": {"blocks": [{"type": "interactive_actions", "is_pending": True}]},
+                                       "audit_log": [{"event_type": "UI_COMPOSED", "node": "ui_composition",
+                                                      "detail": "1 block(s).", "timestamp": "2024-01-01T00:00:06Z"}]}}),
+    _sse("awaiting_confirmation", {"claim_id": "CLM-DJ-003", "interrupt_id": "def",
+                                    "kind": "confirmation",
+                                    "reason": "Confirm computed approve of 3000.0 before this decision is committed.",
+                                    "decision_so_far": {"outcome": "approve", "amount": 3000.0, "confidence": 1.0,
+                                                        "escalation_reason": None}}),
+]
+
 RESUME_RUN_CHUNKS = [
     _sse("node_complete", {"claim_id": "CLM-DJ-002", "node": "escalation",
                             "update": {"audit_log": [{"event_type": "ESCALATION_RESOLVED", "node": "escalation",
@@ -186,6 +198,35 @@ class ClaimResumeViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 404)
 
+    def test_override_metadata_is_persisted_structurally(self):
+        views._persist_node_complete(
+            "CLM-DJ-002",
+            {
+                "node": "commit_decision",
+                "update": {
+                    "audit_log": [
+                        {
+                            "event_type": "decision_overridden",
+                            "node": "commit_decision",
+                            "detail": "Human override.",
+                            "timestamp": "2024-01-01T00:02:00Z",
+                            "original_outcome": "partial",
+                            "original_amount": 48000.0,
+                            "override_reason": "Contractor estimate supports replacement.",
+                            "override_proposed_amount": 60000,
+                        }
+                    ]
+                },
+            },
+        )
+        event = AuditEvent.objects.get(
+            claim_id="CLM-DJ-002", event_type="decision_overridden"
+        )
+        self.assertEqual(event.original_outcome, "partial")
+        self.assertEqual(event.original_amount, 48000.0)
+        self.assertEqual(event.override_reason, "Contractor estimate supports replacement.")
+        self.assertEqual(event.override_proposed_amount, 60000)
+
 
 class EscalationPersistenceTests(TestCase):
     def setUp(self):
@@ -204,3 +245,17 @@ class EscalationPersistenceTests(TestCase):
         self.assertEqual(claim.status, Claim.STATUS_ESCALATED)
         escalated_event = AuditEvent.objects.get(claim_id="CLM-DJ-002", event_type="ESCALATED")
         self.assertIn("date_of_loss", escalated_event.detail)
+
+    def test_awaiting_confirmation_event_marks_claim_and_records_reason(self):
+        with mock.patch.object(views.httpx, "stream") as fake_stream:
+            fake_stream.return_value = _FakeUpstreamContext(CONFIRM_RUN_CHUNKS)
+            body = {**SUBMISSION_FIELDS, "claim_id": "CLM-DJ-003"}
+            response = self.client.post("/api/claims/", data=json.dumps(body), content_type="application/json")
+            self.assertEqual(response.status_code, 200)
+            content = b"".join(response.streaming_content)
+            self.assertIn(b"event: awaiting_confirmation", content)
+
+        claim = Claim.objects.get(claim_id="CLM-DJ-003")
+        self.assertEqual(claim.status, Claim.STATUS_AWAITING_CONFIRM)
+        event = AuditEvent.objects.get(claim_id="CLM-DJ-003", event_type="AWAITING_CONFIRMATION")
+        self.assertIn("Confirm computed", event.detail)

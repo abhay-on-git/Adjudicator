@@ -8,11 +8,10 @@ graph/schemas.py) has no field that could change the outcome or amount, only
 
 Uses the configured provider via `parse_structured`.
 
-Groundedness check: every clause_id the model claims to cite must actually be
-in `retrieved_clauses` — a citation to a clause that was never retrieved
-would be a fabricated reference, logged as a `GROUNDEDNESS_VIOLATION` and
-excluded from the final `cited_clause_ids` state (not shown as evidence for
-a claim that never grounded it).
+Groundedness check has two barriers: the cited ID must be in
+`retrieved_clauses`, and the sentence containing it must have meaningful
+keyword/entity overlap with that clause's title/text. Presence failures and
+content mismatches are typed separately in `groundedness_violations`.
 
 Degradation: unlike `extraction`, a failure here does NOT escalate the whole
 claim — the Decision is already final and deterministic; this node only
@@ -24,6 +23,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.groundedness import verify_citation_content
 from graph.nodes.llm_utils import call_with_backoff, parse_structured
 from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, ExplanationOutput
@@ -66,6 +66,15 @@ def _build_context(state: AdjudicationState) -> str:
     lines.append("Available evidence clauses (cite ONLY from this list):")
     for c in clauses:
         lines.append(f"  - {c.clause_id} ({c.title}): {c.text[:200]}")
+    drop = state.get("context_drop")
+    if drop:
+        dropped_ids = [d["clause_id"] for d in drop.get("dropped", [])]
+        lines.append(
+            "Context-budget drop (do not cite these as if they were in evidence; "
+            f"they were retrieved then dropped): {dropped_ids}. "
+            f"tokens {drop.get('tokens_before')} -> {drop.get('tokens_after')} "
+            f"against budget {drop.get('budget')}."
+        )
     return "\n".join(lines)
 
 
@@ -93,7 +102,7 @@ def _template_fallback(state: AdjudicationState) -> ExplanationOutput:
 @timed_node("explanation", llm=True)
 async def explanation(state: AdjudicationState) -> dict:
     context = _build_context(state)
-    retrieved_ids = {c.clause_id for c in state.get("retrieved_clauses", [])}
+    retrieved_by_id = {c.clause_id: c for c in state.get("retrieved_clauses", [])}
 
     parsed, api_failure_reason = await call_with_backoff(
         lambda: _call_llm(context), max_retries=MAX_API_RETRIES, backoff_seconds=BACKOFF_SECONDS
@@ -115,15 +124,20 @@ async def explanation(state: AdjudicationState) -> dict:
     else:
         grounded_clause_ids = []
         for cid in parsed.cited_clause_ids:
-            if cid in retrieved_ids:
+            clause = retrieved_by_id.get(cid)
+            if clause is None:
+                violations.append(f"citation_not_retrieved:{cid}")
+                continue
+            support = verify_citation_content(parsed.narrative, clause)
+            if support.supported:
                 grounded_clause_ids.append(cid)
-            else:
-                violations.append(cid)
+            elif support.violation:
+                violations.append(support.violation)
         if violations:
             audit_events.append(
                 AuditEvent(
                     event_type=AuditEventType.GROUNDEDNESS_VIOLATION, node="explanation",
-                    detail=f"Explanation cited clause(s) not in retrieved_clauses: {violations}",
+                    detail=f"Explanation citation verification failed: {violations}",
                     timestamp=_now_iso(),
                 )
             )

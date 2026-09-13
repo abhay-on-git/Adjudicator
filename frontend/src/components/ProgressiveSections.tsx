@@ -139,7 +139,7 @@ export function ProgressiveSections({ updates, status }: Props) {
                 ))}
               </div>
             ) : (
-              <p className="empty-note">No risk flags raised.</p>
+              <p className="empty-note">No anomalies detected.</p>
             )}
           </>
         )}

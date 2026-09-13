@@ -58,9 +58,73 @@ async def test_fabricated_citation_flagged_as_groundedness_violation(monkeypatch
 
     monkeypatch.setattr(explanation_module, "call_with_backoff", fake_call_with_backoff)
     result = await explanation(make_state())
-    assert result["groundedness_violations"] == ["§99.99"]
+    assert result["groundedness_violations"] == ["citation_not_retrieved:§99.99"]
     from graph.schemas import AuditEventType
     assert any(e.event_type == AuditEventType.GROUNDEDNESS_VIOLATION for e in result["audit_log"])
+
+
+@pytest.mark.asyncio
+async def test_retrieved_but_mismatched_clause_content_is_flagged(monkeypatch):
+    """Known-bad seed: §2.3 is present, but it says deductible—not that
+    cabinetry is capped. Presence-only checking used to pass this."""
+    async def fake_call_with_backoff(make_call, max_retries, backoff_seconds):
+        return ExplanationOutput(
+            narrative="Built-in cabinetry is capped at 25000 under §2.3.",
+            cited_clause_ids=["§2.3"],
+        ), None
+
+    monkeypatch.setattr(explanation_module, "call_with_backoff", fake_call_with_backoff)
+    result = await explanation(make_state())
+    assert len(result["groundedness_violations"]) == 1
+    assert result["groundedness_violations"][0].startswith("content_mismatch:§2.3:")
+    from graph.schemas import AuditEventType
+    assert any(e.event_type == AuditEventType.GROUNDEDNESS_VIOLATION for e in result["audit_log"])
+
+
+@pytest.mark.asyncio
+async def test_multi_clause_list_scores_each_citation_locally(monkeypatch):
+    """CLM-010 pattern: a long sentence names several irrelevant provisions.
+    The local assertion 'hospitalization coverage at §4.1' is still supported
+    by §4.1 and must not inherit unrelated words from neighboring citations."""
+    state = make_state()
+    state["retrieved_clauses"].append(
+        ClauseRef(
+            policy_id="POL-HOME-01",
+            clause_id="§4.1",
+            title="Hospitalization — Covered",
+            text="In-patient hospitalization is covered.",
+            relevance_score=1.0,
+        )
+    )
+
+    async def fake_call_with_backoff(make_call, max_retries, backoff_seconds):
+        return ExplanationOutput(
+            narrative=(
+                "Other provisions, including hospitalization coverage at §4.1, "
+                "the deductible at §2.3, are not relevant here."
+            ),
+            cited_clause_ids=["§4.1"],
+        ), None
+
+    monkeypatch.setattr(explanation_module, "call_with_backoff", fake_call_with_backoff)
+    result = await explanation(state)
+    assert result["groundedness_violations"] == []
+
+
+@pytest.mark.asyncio
+async def test_leading_citation_and_currency_comma_keep_supporting_text(monkeypatch):
+    async def fake_call_with_backoff(make_call, max_retries, backoff_seconds):
+        return ExplanationOutput(
+            narrative=(
+                "Under §4.2.9, cabinetry is capped at ₹25,000. "
+                "After that, the ₹5,000 deductible applies under §2.3."
+            ),
+            cited_clause_ids=["§4.2.9", "§2.3"],
+        ), None
+
+    monkeypatch.setattr(explanation_module, "call_with_backoff", fake_call_with_backoff)
+    result = await explanation(make_state())
+    assert result["groundedness_violations"] == []
 
 
 @pytest.mark.asyncio

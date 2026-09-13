@@ -6,9 +6,11 @@ deliverable, covering both search_policy and compute_payout (see DESIGN.md
 for why both, not one)."""
 
 import pytest
+from mcp.client import Client
 
 from graph.schemas import ClaimFacts, LineItem, Peril
-from mcp_client.client import compute_payout, get_clause, search_policy
+from mcp_client.client import compute_payout, flag_for_review, get_clause, search_policy
+from mcp_server.server import mcp
 
 
 @pytest.mark.asyncio
@@ -48,3 +50,38 @@ async def test_compute_payout_over_real_mcp_protocol():
     result = await compute_payout(facts, clauses=[])
     assert result.total_payable == 25_000 - 5_000  # §4.2.9 cap minus §2.3 deductible
     assert result.line_items[0].verdict.value == "reduced"
+
+
+@pytest.mark.asyncio
+async def test_flag_for_review_over_real_mcp_protocol_is_idempotent():
+    first = await flag_for_review("CLM-MCP-REVIEW", "Adjuster disputes repair scope.")
+    second = await flag_for_review("CLM-MCP-REVIEW", "Adjuster disputes repair scope.")
+    assert first == second
+    assert first.claim_id == "CLM-MCP-REVIEW"
+    assert first.reason == "Adjuster disputes repair scope."
+
+
+@pytest.mark.asyncio
+async def test_mcp_read_write_annotations_and_internal_history_boundary():
+    async with Client(mcp) as client:
+        result = await client.list_tools()
+
+    tools = {tool.name: tool for tool in result.tools}
+    assert set(tools) == {
+        "search_policy",
+        "get_clause",
+        "compute_payout",
+        "flag_for_review",
+    }
+    for name in ("search_policy", "get_clause", "compute_payout"):
+        assert tools[name].annotations.read_only_hint is True
+        assert tools[name].annotations.idempotent_hint is True
+
+    review_annotations = tools["flag_for_review"].annotations
+    assert review_annotations.read_only_hint is False
+    assert review_annotations.destructive_hint is False
+    assert review_annotations.idempotent_hint is True
+    assert review_annotations.open_world_hint is False
+    # get_claim_history is intentionally the fifth data operation but remains
+    # an internal read-only Python function, not an MCP tool.
+    assert "get_claim_history" not in tools
