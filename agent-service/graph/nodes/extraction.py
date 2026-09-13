@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from pydantic import ValidationError
 
 from graph.nodes.llm_utils import call_with_backoff, parse_structured
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, ClaimFacts, ExtractedNarrativeFacts
 from graph.state import AdjudicationState
 
@@ -96,6 +97,26 @@ async def _call_llm_with_backoff(narrative_text: str, extra_instruction: str = "
     )
 
 
+async def _structured_parse(
+    narrative_text: str, extra_instruction: str = ""
+) -> tuple[ExtractedNarrativeFacts | None, str | None, str | None]:
+    """(parsed, api_failure_reason, parse_validation_error).
+
+    Parse-time Pydantic `ValidationError` — including MiniMax `json_invalid`
+    on malformed JSON — is Mode 2, not an unhandled node crash and not Mode 3.
+    `call_with_backoff` only swallows API errors, so this wrapper is the
+    retry trigger DESIGN.md specifies ("ValidationError on structured-output parse").
+    """
+    try:
+        parsed, api_failure_reason = await _call_llm_with_backoff(
+            narrative_text, extra_instruction
+        )
+    except ValidationError as exc:
+        return None, None, str(exc)
+    return parsed, api_failure_reason, None
+
+
+@timed_node("extraction", llm=True)
 async def extraction(state: AdjudicationState) -> dict:
     envelope = state["normalized_envelope"]
     narrative_text = envelope["narrative_text"]
@@ -103,7 +124,7 @@ async def extraction(state: AdjudicationState) -> dict:
 
     audit_events: list[AuditEvent] = []
 
-    parsed, api_failure_reason = await _call_llm_with_backoff(narrative_text)
+    parsed, api_failure_reason, validation_error = await _structured_parse(narrative_text)
     if api_failure_reason is not None:
         audit_events.append(
             AuditEvent(
@@ -118,17 +139,16 @@ async def extraction(state: AdjudicationState) -> dict:
             "audit_log": audit_events,
         }
 
-    validation_error: str | None = None
     facts: ClaimFacts | None = None
-    try:
-        assert parsed is not None
-        facts = ClaimFacts(
-            **parsed.model_dump(),
-            policy_id=envelope["policy_id"],
-            policy_start_date=envelope["policy_start_date"],
-        )
-    except ValidationError as exc:
-        validation_error = str(exc)
+    if parsed is not None:
+        try:
+            facts = ClaimFacts(
+                **parsed.model_dump(),
+                policy_id=envelope["policy_id"],
+                policy_start_date=envelope["policy_start_date"],
+            )
+        except ValidationError as exc:
+            validation_error = str(exc)
 
     if validation_error is not None:
         if prior_attempts == 0:
@@ -143,18 +163,10 @@ async def extraction(state: AdjudicationState) -> dict:
                 "Your previous attempt failed validation with this error — fix it exactly, "
                 f"and stay strictly within the schema: {validation_error}"
             )
-            parsed, api_failure_reason = await _call_llm_with_backoff(narrative_text, retry_instruction)
-            if api_failure_reason is None and parsed is not None:
-                try:
-                    facts = ClaimFacts(
-                        **parsed.model_dump(),
-                        policy_id=envelope["policy_id"],
-                        policy_start_date=envelope["policy_start_date"],
-                    )
-                    validation_error = None
-                except ValidationError as exc:
-                    validation_error = str(exc)
-            elif api_failure_reason is not None:
+            parsed, api_failure_reason, retry_parse_error = await _structured_parse(
+                narrative_text, retry_instruction
+            )
+            if api_failure_reason is not None:
                 audit_events.append(
                     AuditEvent(
                         event_type=AuditEventType.LLM_UNAVAILABLE, node="extraction",
@@ -167,6 +179,20 @@ async def extraction(state: AdjudicationState) -> dict:
                     "escalation_reason": "adjudication service unavailable",
                     "audit_log": audit_events,
                 }
+            if retry_parse_error is not None:
+                validation_error = retry_parse_error
+            elif parsed is not None:
+                try:
+                    facts = ClaimFacts(
+                        **parsed.model_dump(),
+                        policy_id=envelope["policy_id"],
+                        policy_start_date=envelope["policy_start_date"],
+                    )
+                    validation_error = None
+                except ValidationError as exc:
+                    validation_error = str(exc)
+            else:
+                validation_error = validation_error or "extraction returned no parsed facts"
 
         if validation_error is not None:
             audit_events.append(

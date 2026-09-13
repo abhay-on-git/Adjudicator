@@ -95,6 +95,50 @@ async def test_validation_failure_retries_once_then_succeeds(monkeypatch):
     assert any(e.event_type == AuditEventType.EXTRACTION_RETRY for e in result["audit_log"])
 
 
+def _json_invalid_error() -> ValidationError:
+    """Same class of failure as the live CLM-002 MiniMax parse: pydantic
+    `model_validate_json` raises ValidationError(json_invalid), not JSONDecodeError."""
+    try:
+        ExtractedNarrativeFacts.model_validate_json(
+            '{" "date_of_loss": "2024-05-10", "cause_ambiguous": false}'
+        )
+    except ValidationError as exc:
+        return exc
+    raise AssertionError("expected json_invalid ValidationError")
+
+
+@pytest.mark.asyncio
+async def test_parse_json_invalid_retries_once_then_succeeds(monkeypatch):
+    calls: list[str] = []
+
+    async def fake_call_llm_with_backoff(narrative_text, extra_instruction=""):
+        calls.append(extra_instruction)
+        if not extra_instruction:
+            raise _json_invalid_error()
+        return make_good_facts(), None
+
+    monkeypatch.setattr(extraction_module, "_call_llm_with_backoff", fake_call_llm_with_backoff)
+    result = await extraction(make_state())
+    assert len(calls) == 2
+    assert calls[0] == ""
+    assert "Invalid JSON" in calls[1]
+    assert result["claim_facts"] is not None
+    assert "escalation_reason" not in result
+    assert any(e.event_type == AuditEventType.EXTRACTION_RETRY for e in result["audit_log"])
+
+
+@pytest.mark.asyncio
+async def test_parse_json_invalid_twice_escalates_with_extraction_failed(monkeypatch):
+    async def always_json_invalid(narrative_text, extra_instruction=""):
+        raise _json_invalid_error()
+
+    monkeypatch.setattr(extraction_module, "_call_llm_with_backoff", always_json_invalid)
+    result = await extraction(make_state())
+    assert "claim_facts" not in result
+    assert result["escalation_reason"] == "extraction failed"
+    assert any(e.event_type == AuditEventType.EXTRACTION_RETRY for e in result["audit_log"])
+
+
 @pytest.mark.asyncio
 async def test_validation_failure_twice_escalates_with_extraction_failed(monkeypatch):
     async def fake_call_llm_with_backoff(narrative_text, extra_instruction=""):

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import (
     AuditEvent,
     AuditEventType,
@@ -32,6 +33,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@timed_node("ui_composition")
 def ui_composition(state: AdjudicationState) -> dict:
     decision = state["decision"]
     eligibility = state["eligibility_result"]

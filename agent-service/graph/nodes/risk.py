@@ -17,6 +17,7 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, RiskResult, RiskSeverity
 from graph.state import AdjudicationState
 
@@ -48,6 +49,7 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
+@timed_node("risk_anomaly")
 def risk_anomaly(state: AdjudicationState) -> dict:
     facts = state["claim_facts"]
     envelope = state["normalized_envelope"]

@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType
 from graph.state import AdjudicationState
 
@@ -44,6 +45,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@timed_node("intake_normalize")
 def intake_normalize(state: AdjudicationState) -> dict:
     raw = state["raw_input"]
     narrative = raw.get("narrative_text", "")

@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from langgraph.types import interrupt
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType
 from graph.state import AdjudicationState
 
@@ -28,6 +29,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@timed_node("escalation")
 def escalation(state: AdjudicationState) -> dict:
     reason = state.get("escalation_reason") or "Escalated for manual review."
 

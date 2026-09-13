@@ -25,6 +25,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from graph.nodes.llm_utils import call_with_backoff, parse_structured
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, ExplanationOutput
 from graph.state import AdjudicationState
 
@@ -89,6 +90,7 @@ def _template_fallback(state: AdjudicationState) -> ExplanationOutput:
     return ExplanationOutput(narrative=text, cited_clause_ids=eligibility.clauses_used)
 
 
+@timed_node("explanation", llm=True)
 async def explanation(state: AdjudicationState) -> dict:
     context = _build_context(state)
     retrieved_ids = {c.clause_id for c in state.get("retrieved_clauses", [])}
