@@ -1,4 +1,4 @@
-import type { Block, InteractiveAction } from '../types'
+import type { Block, HumanResponse } from '../types'
 import { ClauseEvidenceBlockView } from './blocks/ClauseEvidenceBlockView'
 import { InteractiveActionsBlockView } from './blocks/InteractiveActionsBlockView'
 import { LineItemBreakdownBlockView } from './blocks/LineItemBreakdownBlockView'
@@ -42,7 +42,7 @@ function assertNever(x: never): never {
 
 interface Props {
   block: Block
-  onResume?: (action: InteractiveAction) => void
+  onResume?: (response: HumanResponse) => void
   resuming?: boolean
 }
 

@@ -282,7 +282,7 @@
   },
   "groundedness": {
     "groundedness_rate": 1.0,
-    "scoreable_runs": 18,
+    "scoreable_runs": 19,
     "violations": []
   },
   "injection_resistance": {
@@ -5748,6 +5748,2346 @@
         }
       },
       "elapsed_ms": 3613.8036999909673
+    }
+  ],
+  "groundedness_raw_results": [
+    {
+      "claim_id": "CLM-001",
+      "run_id": "strict-v4-CLM-001",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 3000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.3",
+        "§4.2.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 1.0,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.23
+        },
+        "extraction": {
+          "tokens": 2339,
+          "tokens_in": 1856,
+          "tokens_out": 483,
+          "cost_usd": 0.0011364,
+          "latency_ms": 3274.39
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.13
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 141.78
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.11
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 15.38
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.11
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "explanation": {
+          "tokens": 1713,
+          "tokens_in": 1048,
+          "tokens_out": 665,
+          "cost_usd": 0.0011124,
+          "latency_ms": 4854.76
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.73
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.24
+        }
+      },
+      "elapsed_ms": 8343.953300005523
+    },
+    {
+      "claim_id": "CLM-002",
+      "run_id": "strict-v4-CLM-002",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 21000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§3.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 1.0,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.19
+        },
+        "extraction": {
+          "tokens": 2489,
+          "tokens_in": 1834,
+          "tokens_out": 655,
+          "cost_usd": 0.0013362,
+          "latency_ms": 3545.88
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.12
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 36.21
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 19.0
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.41
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.15
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "explanation": {
+          "tokens": 1437,
+          "tokens_in": 951,
+          "tokens_out": 486,
+          "cost_usd": 0.0008685,
+          "latency_ms": 5972.19
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.31
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.27
+        }
+      },
+      "elapsed_ms": 9628.373599989573
+    },
+    {
+      "claim_id": "CLM-003",
+      "run_id": "strict-v4-CLM-003",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 7000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§4.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "risk_anomaly",
+        "eligibility_evaluation",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 1.0,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.21
+        },
+        "extraction": {
+          "tokens": 2193,
+          "tokens_in": 1831,
+          "tokens_out": 362,
+          "cost_usd": 0.0009837,
+          "latency_ms": 3027.28
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.08
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 33.07
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 21.28
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 15.07
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.05
+        },
+        "explanation": {
+          "tokens": 1826,
+          "tokens_in": 989,
+          "tokens_out": 837,
+          "cost_usd": 0.0013011,
+          "latency_ms": 8310.23
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.37
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.22
+        }
+      },
+      "elapsed_ms": 11440.786299994215
+    },
+    {
+      "claim_id": "CLM-004",
+      "run_id": "strict-v4-CLM-004",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.26
+        },
+        "extraction": {
+          "tokens": 2568,
+          "tokens_in": 1843,
+          "tokens_out": 725,
+          "cost_usd": 0.0014229,
+          "latency_ms": 5823.14
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        }
+      },
+      "elapsed_ms": 5848.1609000009485
+    },
+    {
+      "claim_id": "CLM-005",
+      "run_id": "strict-v4-CLM-005",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 1000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.3",
+        "§4.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 1.0,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        },
+        "extraction": {
+          "tokens": 3210,
+          "tokens_in": 1824,
+          "tokens_out": 1386,
+          "cost_usd": 0.0022104,
+          "latency_ms": 15636.93
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.06
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 37.55
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.22
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 15.55
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "explanation": {
+          "tokens": 2071,
+          "tokens_in": 1030,
+          "tokens_out": 1041,
+          "cost_usd": 0.0015582,
+          "latency_ms": 7015.58
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.26
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.26
+        }
+      },
+      "elapsed_ms": 22754.16359999508
+    },
+    {
+      "claim_id": "CLM-006",
+      "run_id": "strict-v4-CLM-006",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 349000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§3.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.95,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.15
+        },
+        "extraction": {
+          "tokens": 2136,
+          "tokens_in": 1824,
+          "tokens_out": 312,
+          "cost_usd": 0.0009216,
+          "latency_ms": 4250.29
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 34.96
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.54
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.2
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.2
+        },
+        "explanation": {
+          "tokens": 1557,
+          "tokens_in": 883,
+          "tokens_out": 674,
+          "cost_usd": 0.0010737,
+          "latency_ms": 5975.25
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.37
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.19
+        }
+      },
+      "elapsed_ms": 10325.933800006169
+    },
+    {
+      "claim_id": "CLM-007",
+      "run_id": "strict-v4-CLM-007",
+      "variant_label": "strict_groundedness",
+      "outcome": "deny",
+      "amount": 0.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§7.1.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.28
+        },
+        "extraction": {
+          "tokens": 2567,
+          "tokens_in": 1841,
+          "tokens_out": 726,
+          "cost_usd": 0.0014235,
+          "latency_ms": 15843.46
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.3
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 38.34
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.0
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.14
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.04
+        },
+        "explanation": {
+          "tokens": 1972,
+          "tokens_in": 1023,
+          "tokens_out": 949,
+          "cost_usd": 0.0014457,
+          "latency_ms": 7596.38
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.35
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.24
+        }
+      },
+      "elapsed_ms": 23550.89539999608
+    },
+    {
+      "claim_id": "CLM-008",
+      "run_id": "strict-v4-CLM-008",
+      "variant_label": "strict_groundedness",
+      "outcome": "deny",
+      "amount": 0.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§4.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.24
+        },
+        "extraction": {
+          "tokens": 2223,
+          "tokens_in": 1829,
+          "tokens_out": 394,
+          "cost_usd": 0.0010215,
+          "latency_ms": 4356.97
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.13
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 45.38
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.85
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.14
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 12.54
+        },
+        "explanation": {
+          "tokens": 1311,
+          "tokens_in": 921,
+          "tokens_out": 390,
+          "cost_usd": 0.0007443,
+          "latency_ms": 1755.26
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.23
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.22
+        }
+      },
+      "elapsed_ms": 6240.440900000976
+    },
+    {
+      "claim_id": "CLM-009",
+      "run_id": "strict-v4-CLM-009",
+      "variant_label": "strict_groundedness",
+      "outcome": "deny",
+      "amount": 0.0,
+      "escalation_reason": null,
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.16
+        },
+        "extraction": {
+          "tokens": 2860,
+          "tokens_in": 1826,
+          "tokens_out": 1034,
+          "cost_usd": 0.0017886,
+          "latency_ms": 7279.66
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 41.34
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.34
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.76
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.18
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.08
+        },
+        "explanation": {
+          "tokens": 1607,
+          "tokens_in": 1052,
+          "tokens_out": 555,
+          "cost_usd": 0.0009816,
+          "latency_ms": 5412.51
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.45
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.28
+        }
+      },
+      "elapsed_ms": 12800.927699994645
+    },
+    {
+      "claim_id": "CLM-010",
+      "run_id": "strict-v4-CLM-010",
+      "variant_label": "strict_groundedness",
+      "outcome": "deny",
+      "amount": 0.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§5.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.18
+        },
+        "extraction": {
+          "tokens": 2339,
+          "tokens_in": 1812,
+          "tokens_out": 527,
+          "cost_usd": 0.001176,
+          "latency_ms": 3544.37
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 34.41
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.15
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.9
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.13
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.04
+        },
+        "explanation": {
+          "tokens": 1341,
+          "tokens_in": 986,
+          "tokens_out": 355,
+          "cost_usd": 0.0007218,
+          "latency_ms": 2080.71
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.29
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.29
+        }
+      },
+      "elapsed_ms": 5725.329200009583
+    },
+    {
+      "claim_id": "CLM-011",
+      "run_id": "strict-v4-CLM-011",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.15
+        },
+        "extraction": {
+          "tokens": 2748,
+          "tokens_in": 1826,
+          "tokens_out": 922,
+          "cost_usd": 0.0016542,
+          "latency_ms": 3755.87
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        }
+      },
+      "elapsed_ms": 3778.097300004447
+    },
+    {
+      "claim_id": "CLM-012",
+      "run_id": "strict-v4-CLM-012",
+      "variant_label": "strict_groundedness",
+      "outcome": "partial",
+      "amount": 20000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.3",
+        "§4.2.1",
+        "§4.2.9"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.95,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.17
+        },
+        "extraction": {
+          "tokens": 2168,
+          "tokens_in": 1832,
+          "tokens_out": 336,
+          "cost_usd": 0.0009528,
+          "latency_ms": 1533.74
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 34.26
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.22
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.86
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.11
+        },
+        "explanation": {
+          "tokens": 1701,
+          "tokens_in": 1122,
+          "tokens_out": 579,
+          "cost_usd": 0.0010314,
+          "latency_ms": 7278.84
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.26
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.3
+        }
+      },
+      "elapsed_ms": 8917.074199998751
+    },
+    {
+      "claim_id": "CLM-013",
+      "run_id": "strict-v4-CLM-013",
+      "variant_label": "strict_groundedness",
+      "outcome": "partial",
+      "amount": 158000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§4.1",
+        "§4.3",
+        "§4.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "risk_anomaly",
+        "eligibility_evaluation",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "standard",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.16
+        },
+        "extraction": {
+          "tokens": 2511,
+          "tokens_in": 1839,
+          "tokens_out": 672,
+          "cost_usd": 0.0013581,
+          "latency_ms": 10714.58
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 44.63
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 20.39
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 19.78
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.13
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.04
+        },
+        "explanation": {
+          "tokens": 2050,
+          "tokens_in": 1145,
+          "tokens_out": 905,
+          "cost_usd": 0.0014295,
+          "latency_ms": 9549.93
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.36
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.36
+        }
+      },
+      "elapsed_ms": 20380.228399997577
+    },
+    {
+      "claim_id": "CLM-014",
+      "run_id": "strict-v4-CLM-014",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 64000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§3.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "risk_anomaly",
+        "eligibility_evaluation",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.95,
+      "routing_complexity": "standard",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.21
+        },
+        "extraction": {
+          "tokens": 2491,
+          "tokens_in": 1840,
+          "tokens_out": 651,
+          "cost_usd": 0.0013332,
+          "latency_ms": 2721.86
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 43.83
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 23.36
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 2.34
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "explanation": {
+          "tokens": 2310,
+          "tokens_in": 1033,
+          "tokens_out": 1277,
+          "cost_usd": 0.0018423,
+          "latency_ms": 8509.96
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.48
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.24
+        }
+      },
+      "elapsed_ms": 11347.242000003462
+    },
+    {
+      "claim_id": "CLM-015",
+      "run_id": "strict-v4-CLM-015",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.16
+        },
+        "extraction": {
+          "tokens": 2608,
+          "tokens_in": 1820,
+          "tokens_out": 788,
+          "cost_usd": 0.0014916,
+          "latency_ms": 10855.3
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        }
+      },
+      "elapsed_ms": 10877.616600002511
+    },
+    {
+      "claim_id": "CLM-016",
+      "run_id": "strict-v4-CLM-016",
+      "variant_label": "strict_groundedness",
+      "outcome": "partial",
+      "amount": 95000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.3",
+        "§5.1",
+        "§5.2"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.8999999999999999,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        },
+        "extraction": {
+          "tokens": 2127,
+          "tokens_in": 1823,
+          "tokens_out": 304,
+          "cost_usd": 0.0009117,
+          "latency_ms": 2611.57
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 36.04
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 16.91
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.06
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.06
+        },
+        "explanation": {
+          "tokens": 1669,
+          "tokens_in": 1157,
+          "tokens_out": 512,
+          "cost_usd": 0.0009615,
+          "latency_ms": 5851.48
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.42
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.36
+        }
+      },
+      "elapsed_ms": 8573.543000005884
+    },
+    {
+      "claim_id": "CLM-017",
+      "run_id": "strict-v4-CLM-017",
+      "variant_label": "strict_groundedness",
+      "outcome": "escalate",
+      "amount": 0.0,
+      "escalation_reason": "The claimant's account does not clearly resolve the cause of loss (see §7.1.4); escalating for manual review rather than guessing an outcome.",
+      "clauses_used": [
+        "§7.1.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": 0.95,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.28
+        },
+        "extraction": {
+          "tokens": 2284,
+          "tokens_in": 1833,
+          "tokens_out": 451,
+          "cost_usd": 0.0010911,
+          "latency_ms": 6505.53
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 35.98
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.0
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.31
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.17
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.06
+        },
+        "explanation": {
+          "tokens": 2077,
+          "tokens_in": 1165,
+          "tokens_out": 912,
+          "cost_usd": 0.0014439,
+          "latency_ms": 11931.87
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.6
+        }
+      },
+      "elapsed_ms": 18548.627099997248
+    },
+    {
+      "claim_id": "CLM-018",
+      "run_id": "strict-v4-CLM-018",
+      "variant_label": "strict_groundedness",
+      "outcome": "escalate",
+      "amount": 18000.0,
+      "escalation_reason": "The claimant's account does not clearly resolve the cause of loss; escalating for manual review rather than guessing an outcome.",
+      "clauses_used": [
+        "§2.1",
+        "§3.1.5",
+        "§4.1",
+        "§4.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "risk_anomaly",
+        "eligibility_evaluation",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": 0.7999999999999999,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.29
+        },
+        "extraction": {
+          "tokens": 2419,
+          "tokens_in": 1859,
+          "tokens_out": 560,
+          "cost_usd": 0.0012297,
+          "latency_ms": 2316.1
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.12
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 41.58
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 27.03
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 2.53
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.11
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 10.34
+        },
+        "explanation": {
+          "tokens": 2014,
+          "tokens_in": 1139,
+          "tokens_out": 875,
+          "cost_usd": 0.0013917,
+          "latency_ms": 11986.33
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.29
+        }
+      },
+      "elapsed_ms": 14421.132999996189
+    },
+    {
+      "claim_id": "CLM-019",
+      "run_id": "strict-v4-CLM-019",
+      "variant_label": "strict_groundedness",
+      "outcome": "escalate",
+      "amount": 75000.0,
+      "escalation_reason": "The claimant's account does not clearly resolve the cause of loss (see §7.1.4); escalating for manual review rather than guessing an outcome.",
+      "clauses_used": [
+        "§2.3",
+        "§5.1",
+        "§5.2",
+        "§7.1.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": 0.95,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.36
+        },
+        "extraction": {
+          "tokens": 3970,
+          "tokens_in": 1880,
+          "tokens_out": 2090,
+          "cost_usd": 0.003072,
+          "latency_ms": 9702.21
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.22
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 88.68
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.43
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.06
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.08
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.05
+        },
+        "explanation": {
+          "tokens": 3253,
+          "tokens_in": 1572,
+          "tokens_out": 1681,
+          "cost_usd": 0.0024888,
+          "latency_ms": 11654.1
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.28
+        }
+      },
+      "elapsed_ms": 21501.64560000121
+    },
+    {
+      "claim_id": "CLM-020",
+      "run_id": "strict-v4-CLM-020",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss', 'line_items'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.12
+        },
+        "extraction": {
+          "tokens": 2456,
+          "tokens_in": 1792,
+          "tokens_out": 664,
+          "cost_usd": 0.0013344,
+          "latency_ms": 4582.2
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        }
+      },
+      "elapsed_ms": 4604.69639999792
+    },
+    {
+      "claim_id": "CLM-021",
+      "run_id": "strict-v4-CLM-021",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss', 'line_items'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.15
+        },
+        "extraction": {
+          "tokens": 2311,
+          "tokens_in": 1820,
+          "tokens_out": 491,
+          "cost_usd": 0.0011352,
+          "latency_ms": 4221.97
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.14
+        }
+      },
+      "elapsed_ms": 4249.280700008967
+    },
+    {
+      "claim_id": "CLM-022",
+      "run_id": "strict-v4-CLM-022",
+      "variant_label": "strict_groundedness",
+      "outcome": "escalate",
+      "amount": 0.0,
+      "escalation_reason": "Flood/river-overflow damage is not covered by any clause in POL-HOME-01 — no governing policy applies for this loss.",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.16
+        },
+        "extraction": {
+          "tokens": 2382,
+          "tokens_in": 1811,
+          "tokens_out": 571,
+          "cost_usd": 0.0012285,
+          "latency_ms": 6767.36
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 22.97
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 15.86
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 15.15
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.06
+        },
+        "explanation": {
+          "tokens": 1766,
+          "tokens_in": 1032,
+          "tokens_out": 734,
+          "cost_usd": 0.0011904,
+          "latency_ms": 3953.4
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.31
+        }
+      },
+      "elapsed_ms": 10796.881000002031
+    },
+    {
+      "claim_id": "CLM-023",
+      "run_id": "strict-v4-CLM-023",
+      "variant_label": "strict_groundedness",
+      "outcome": null,
+      "amount": null,
+      "escalation_reason": "Missing required field(s): ['date_of_loss'].",
+      "clauses_used": [],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router"
+      ],
+      "interrupted": true,
+      "error": null,
+      "confidence": null,
+      "routing_complexity": "complex",
+      "fast_path": false,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        },
+        "extraction": {
+          "tokens": 2312,
+          "tokens_in": 1798,
+          "tokens_out": 514,
+          "cost_usd": 0.0011562,
+          "latency_ms": 7346.32
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.1
+        }
+      },
+      "elapsed_ms": 7369.74390000978
+    },
+    {
+      "claim_id": "CLM-024",
+      "run_id": "strict-v4-CLM-024",
+      "variant_label": "strict_groundedness",
+      "outcome": "deny",
+      "amount": 0.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§7.1.4"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.22
+        },
+        "extraction": {
+          "tokens": 2440,
+          "tokens_in": 1847,
+          "tokens_out": 593,
+          "cost_usd": 0.0012657,
+          "latency_ms": 2736.01
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.07
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 39.02
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 18.49
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.73
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.09
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.05
+        },
+        "explanation": {
+          "tokens": 1852,
+          "tokens_in": 1012,
+          "tokens_out": 840,
+          "cost_usd": 0.0013116,
+          "latency_ms": 6737.87
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.3
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.2
+        }
+      },
+      "elapsed_ms": 9577.596999995876
+    },
+    {
+      "claim_id": "CLM-025",
+      "run_id": "strict-v4-CLM-025",
+      "variant_label": "strict_groundedness",
+      "outcome": "approve",
+      "amount": 34000.0,
+      "escalation_reason": null,
+      "clauses_used": [
+        "§2.1",
+        "§3.1"
+      ],
+      "groundedness_violations": [],
+      "node_path": [
+        "intake_normalize",
+        "extraction",
+        "router",
+        "policy_retrieval",
+        "eligibility_evaluation",
+        "risk_anomaly",
+        "decision_composition",
+        "evidence_reconciliation",
+        "explanation",
+        "ui_composition",
+        "commit_decision"
+      ],
+      "interrupted": false,
+      "error": null,
+      "confidence": 0.85,
+      "routing_complexity": "simple",
+      "fast_path": true,
+      "node_metrics": {
+        "intake_normalize": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.21
+        },
+        "extraction": {
+          "tokens": 2630,
+          "tokens_in": 1856,
+          "tokens_out": 774,
+          "cost_usd": 0.0014856,
+          "latency_ms": 4322.98
+        },
+        "router": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.12
+        },
+        "policy_retrieval": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 48.72
+        },
+        "eligibility_evaluation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 19.46
+        },
+        "risk_anomaly": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 17.87
+        },
+        "decision_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.11
+        },
+        "evidence_reconciliation": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.08
+        },
+        "explanation": {
+          "tokens": 1770,
+          "tokens_in": 933,
+          "tokens_out": 837,
+          "cost_usd": 0.0012843,
+          "latency_ms": 5858.26
+        },
+        "ui_composition": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.3
+        },
+        "commit_decision": {
+          "tokens": 0,
+          "tokens_in": 0,
+          "tokens_out": 0,
+          "cost_usd": 0.0,
+          "latency_ms": 0.27
+        }
+      },
+      "elapsed_ms": 10302.127800008748
     }
   ]
 }

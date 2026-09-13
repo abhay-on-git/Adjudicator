@@ -6,7 +6,7 @@ import type {
   AuditLogEntry,
   ClaimSubmission,
   DecisionUISpec,
-  InteractiveAction,
+  HumanResponse,
   NodeUpdate,
 } from '../types'
 import { AuditTimeline } from './AuditTimeline'
@@ -63,6 +63,9 @@ export function ClaimStreamView({ initialResponse, submission, onReset, onBusyCh
           setClaimId(evt.data.claim_id)
           setStatus('escalated')
           setEscalationReason(evt.data.reason)
+        } else if (evt.event === 'awaiting_confirmation') {
+          setClaimId(evt.data.claim_id)
+          setStatus('awaiting_confirmation')
         } else if (evt.event === 'done') {
           setClaimId(evt.data.claim_id)
           setStatus('done')
@@ -91,8 +94,8 @@ export function ClaimStreamView({ initialResponse, submission, onReset, onBusyCh
     }
   }
 
-  function handleActionButton(action: InteractiveAction) {
-    void handleResume(action)
+  function handleActionButton(response: HumanResponse) {
+    void handleResume(response)
   }
 
   function handleFreeTextResume() {
@@ -135,6 +138,16 @@ export function ClaimStreamView({ initialResponse, submission, onReset, onBusyCh
               <button type="button" className="btn btn-ghost" onClick={onReset}>
                 Back
               </button>
+            </div>
+          )}
+
+          {status === 'awaiting_confirmation' && (
+            <div className="card confirmation-panel">
+              <h3>Confirm this decision</h3>
+              <p>
+                The payable amount is already computed. Confirm it, override to human review, or
+                request documents — none of those actions lets the model change the figure.
+              </p>
             </div>
           )}
 

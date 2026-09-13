@@ -5,9 +5,9 @@ Pure code, no LLM: every check here is a deterministic comparison over
 a severity — it has no path that can touch the outcome or amount directly;
 `decision_composition` decides how much weight a risk flag carries.
 
-`get_claim_history` is a plain internal function for P0 (per the agreed scope
-note in DESIGN.md), not an MCP tool — promoted to a real MCP tool in P1 when
-the full tool surface is built out. It reads the same claims.json fixture the
+`get_claim_history` is intentionally a plain internal read-only function (per
+the agreed scope note in DESIGN.md), not an MCP tool. It reads the same
+claims.json fixture the
 golden set uses, standing in for what would be a real claims database.
 """
 
@@ -32,7 +32,7 @@ def _now_iso() -> str:
 
 def get_claim_history(policy_id: str, exclude_claim_id: str | None = None) -> list[dict]:
     """Prior claims filed under the same policy_id. Plain internal function
-    (see module docstring) — not exposed over MCP in P0."""
+    (see module docstring) — intentionally not exposed over MCP."""
     all_claims = json.loads(CLAIMS_FIXTURE.read_text(encoding="utf-8"))
     return [
         c for c in all_claims

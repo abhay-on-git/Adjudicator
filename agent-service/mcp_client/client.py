@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from mcp.client import Client
 
-from graph.schemas import ClaimFacts, ClauseRef, EligibilityResult
+from graph.schemas import ClaimFacts, ClauseRef, EligibilityResult, ReviewFlagResult
 from mcp_server.server import mcp
 
 
@@ -68,3 +68,14 @@ async def compute_payout(facts: ClaimFacts, clauses: list[ClauseRef]) -> Eligibi
         # be an object at the top level) — the object's own fields are the
         # top-level structured_content here.
         return EligibilityResult(**result.structured_content)
+
+
+async def flag_for_review(claim_id: str, reason: str) -> ReviewFlagResult:
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "flag_for_review",
+            {"claim_id": claim_id, "reason": reason},
+        )
+        if result.is_error:
+            raise RuntimeError(f"flag_for_review tool call failed: {result.content}")
+        return ReviewFlagResult(**result.structured_content)

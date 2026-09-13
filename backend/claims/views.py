@@ -78,6 +78,10 @@ def _persist_node_complete(claim_id: str, data: dict) -> None:
             node=entry.get("node", node),
             detail=entry.get("detail", ""),
             occurred_at=entry.get("timestamp", ""),
+            original_outcome=entry.get("original_outcome"),
+            original_amount=entry.get("original_amount"),
+            override_reason=entry.get("override_reason"),
+            override_proposed_amount=entry.get("override_proposed_amount"),
         )
     if node == "decision_composition" and update.get("decision") is not None:
         decision = update["decision"]
@@ -105,6 +109,17 @@ def _persist_escalated(claim_id: str, data: dict) -> None:
     )
 
 
+def _persist_awaiting_confirmation(claim_id: str, data: dict) -> None:
+    Claim.objects.filter(claim_id=claim_id).update(status=Claim.STATUS_AWAITING_CONFIRM)
+    AuditEvent.objects.create(
+        claim_id=claim_id,
+        event_type="AWAITING_CONFIRMATION",
+        node="commit_decision",
+        detail=data.get("reason", ""),
+        occurred_at=_now_iso(),
+    )
+
+
 def _persist_done(claim_id: str, data: dict) -> None:
     Claim.objects.filter(claim_id=claim_id).update(status=Claim.STATUS_DONE)
     decision = data.get("decision")
@@ -126,6 +141,8 @@ def _persist_sse_event(claim_id: str, event_name: str, data: dict) -> None:
         _persist_node_complete(claim_id, data)
     elif event_name == "escalated":
         _persist_escalated(claim_id, data)
+    elif event_name == "awaiting_confirmation":
+        _persist_awaiting_confirmation(claim_id, data)
     elif event_name == "done":
         _persist_done(claim_id, data)
 
@@ -192,7 +209,7 @@ class ClaimDetailView(APIView):
 class ClaimResumeView(APIView):
     """POST /api/claims/<id>/resume/ — proxy + persist, same pattern as
     submission, for a claim currently paused in agent-service's `escalation`
-    node."""
+    or `commit_decision` node."""
 
     def post(self, request, claim_id: str):
         if not Claim.objects.filter(claim_id=claim_id).exists():

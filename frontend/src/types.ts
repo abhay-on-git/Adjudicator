@@ -13,7 +13,13 @@ export type Outcome = 'approve' | 'deny' | 'partial' | 'escalate'
 export type LineItemVerdict = 'allowed' | 'reduced' | 'excluded'
 export type RiskSeverity = 'none' | 'low' | 'medium' | 'high'
 export type InteractiveAction = 'approve' | 'override' | 'request_documents'
-export type ClaimStatus = 'pending' | 'in_progress' | 'escalated' | 'done'
+export interface OverridePayload {
+  action: 'override'
+  reason: string
+  proposed_amount?: number
+}
+export type HumanResponse = InteractiveAction | OverridePayload
+export type ClaimStatus = 'pending' | 'in_progress' | 'escalated' | 'awaiting_confirm' | 'done'
 
 export interface Decision {
   outcome: Outcome
@@ -71,6 +77,7 @@ export interface RiskSignalBlock {
   type: 'risk_signal'
   severity: RiskSeverity
   flags: string[]
+  duplicate_claim_ids?: string[]
 }
 
 /** Any block whose `type` this frontend doesn't (yet) recognize — the
@@ -99,6 +106,10 @@ export interface AuditLogEntry {
   node: string
   detail: string
   timestamp: string
+  original_outcome?: Outcome | null
+  original_amount?: number | null
+  override_reason?: string | null
+  override_proposed_amount?: number | null
 }
 
 export interface StreamLineItem {
@@ -180,6 +191,7 @@ export interface NodeCompleteEvent {
 export interface EscalatedEvent {
   claim_id: string
   interrupt_id: string
+  kind?: 'escalation' | 'confirmation'
   reason: string
   decision_so_far: Decision | null
 }
@@ -193,6 +205,7 @@ export interface DoneEvent {
 export type StreamEvent =
   | { event: 'node_complete'; data: NodeCompleteEvent }
   | { event: 'escalated'; data: EscalatedEvent }
+  | { event: 'awaiting_confirmation'; data: EscalatedEvent }
   | { event: 'done'; data: DoneEvent }
 
 export interface ClaimSubmission {
