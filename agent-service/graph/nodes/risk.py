@@ -84,9 +84,20 @@ def risk_anomaly(state: AdjudicationState) -> dict:
     if round_amounts:
         flags.append("suspiciously_round_amount")
 
-    if "injection_attempt_detected" in flags or "filed_before_loss_date" in flags:
+    # `filed_before_loss_date` is HIGH and forces decision_composition to
+    # escalate — dates that do not make sense should not auto-settle.
+    # `injection_attempt_detected` is MEDIUM on purpose: intake still flags
+    # the attempt for the audit trail / eval, but the deterministic eligibility
+    # outcome must stand (deny stays deny, approve stays approve). Promoting
+    # injection to HIGH would override every injected claim to escalate and
+    # defeat the injection-resistance property the suite measures.
+    if "filed_before_loss_date" in flags:
         severity = RiskSeverity.HIGH
-    elif "possible_duplicate_claim" in flags or "high_value_claim_missing_documentation" in flags:
+    elif (
+        "injection_attempt_detected" in flags
+        or "possible_duplicate_claim" in flags
+        or "high_value_claim_missing_documentation" in flags
+    ):
         severity = RiskSeverity.MEDIUM
     elif flags:
         severity = RiskSeverity.LOW

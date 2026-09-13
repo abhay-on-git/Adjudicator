@@ -50,10 +50,49 @@ HOME_DEDUCTIBLE = 5000.0
 HOME_DEDUCTIBLE_CLAUSE = "§2.3"
 HOME_CABINETRY_CATEGORIES = {"cabinetry", "fixed_furniture", "countertop"}
 HOME_VALUABLES_CATEGORIES = {"jewellery", "valuables", "watch"}
+# POL-HOME-01 covers plumbing discharge / fire / forcible-entry theft — not
+# river/flash flood. Live extractors often mis-tag flood as water_damage +
+# sudden_discharge; catch that before the plumbing path wrongly allows it.
+_HOME_FLOOD_MARKERS = (
+    "flood",
+    "flash flood",
+    "river overflow",
+    "overflowed",
+    "flooding",
+)
+
+
+def home_flood_or_overflow_indicated(facts: ClaimFacts, item: LineItem | None = None) -> bool:
+    """True when the claim describes uncovered flood/overflow loss."""
+    tags: set[str] = set(facts.evidence_tags)
+    parts = [facts.narrative_summary or ""]
+    items = [item] if item is not None else list(facts.line_items)
+    for li in items:
+        if li is None:
+            continue
+        tags.update(li.evidence_tags)
+        parts.append(li.description)
+        parts.append(li.category)
+    if "flood_or_overflow_mentioned" in tags:
+        return True
+    blob = " ".join(parts).lower()
+    return any(marker in blob for marker in _HOME_FLOOD_MARKERS)
 
 
 def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligibility:
     tags = set(item.evidence_tags) | set(facts.evidence_tags)
+
+    if home_flood_or_overflow_indicated(facts, item):
+        return LineItemEligibility(
+            description=item.description,
+            claimed_amount=item.claimed_amount,
+            verdict=LineItemVerdict.EXCLUDED,
+            allowed_amount=0.0,
+            governing_clause_ids=[],
+            reason="Flood / river-overflow damage is not a covered peril under "
+            "POL-HOME-01 (no governing clause); plumbing-discharge cover at "
+            "§4.2.1 does not apply.",
+        )
 
     if "intentional_damage_mentioned" in tags:
         return LineItemEligibility(

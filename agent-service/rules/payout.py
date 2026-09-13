@@ -14,7 +14,7 @@ based on risk/confidence, but it has no code path that can alter the amount.
 from __future__ import annotations
 
 from graph.schemas import ClaimFacts, ClauseRef, EligibilityResult, LineItemVerdict, Outcome
-from rules.eligibility import POLICY_EVALUATORS
+from rules.eligibility import POLICY_EVALUATORS, home_flood_or_overflow_indicated
 
 
 def derive_outcome_from_eligibility(result: EligibilityResult) -> Outcome:
@@ -107,6 +107,17 @@ def compute_payout(facts: ClaimFacts, clauses: list[ClauseRef]) -> EligibilityRe
         escalation_reason = (
             "The claimant's account does not clearly resolve the cause of loss"
             f"{clause_note}; escalating for manual review rather than guessing an outcome."
+        )
+    elif facts.policy_id == "POL-HOME-01" and home_flood_or_overflow_indicated(facts):
+        # Prefer escalate (not a silent deny) so the empty-coverage degradation
+        # path's intent is preserved even when the LLM mis-tags flood as
+        # water_damage and retrieval still returns plumbing clauses.
+        needs_escalation = True
+        total_payable = 0.0
+        deductible_applied = 0.0
+        escalation_reason = (
+            "Flood/river-overflow damage is not covered by any clause in "
+            "POL-HOME-01 — no governing policy applies for this loss."
         )
 
     return EligibilityResult(

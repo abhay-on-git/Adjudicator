@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from graph.schemas import AuditEvent, AuditEventType, ClauseRef
+from graph.schemas import AuditEvent, AuditEventType, ClauseRef, Peril
 from graph.state import AdjudicationState
 from mcp_client.client import search_policy
 
@@ -44,6 +44,26 @@ def _dedup(queries: list[str]) -> list[str]:
 # tests/test_retrieval_node.py for the case this threshold exists to catch.
 MIN_COVERAGE_RELEVANCE = 0.5
 
+# Enum values like `motor_accident` do not appear as tokens in the fixture
+# policy markdown ("accidental damage", "collision", …). Naively querying
+# `p.value.replace("_", " ")` therefore produces false empty-retrieval
+# escalations for otherwise covered claims whenever the LLM's line-item
+# category is also non-overlapping (e.g. "door repair"). Map each peril to
+# the clause vocabulary that actually governs it. `Peril.OTHER` is omitted
+# on purpose — same rationale as excluding it from coverage queries below.
+PERIL_SEARCH_QUERIES: dict[Peril, str] = {
+    Peril.FIRE: "fire",
+    Peril.WATER_DAMAGE: "sudden accidental discharge plumbing",
+    Peril.THEFT: "theft forcible entry",
+    Peril.HOSPITALIZATION: "hospitalization",
+    Peril.ACCIDENTAL_INJURY: "accidental injury",
+    Peril.MOTOR_ACCIDENT: "accidental damage collision",
+    Peril.MOTOR_THEFT: "theft of vehicle",
+    Peril.TRIP_CANCELLATION: "trip cancellation",
+    Peril.BAGGAGE_LOSS: "baggage loss",
+    Peril.MEDICAL_ABROAD: "emergency medical treatment abroad",
+}
+
 
 def _coverage_queries(facts) -> list[str]:
     """Peril/category queries — these are what determine whether the claim's
@@ -51,8 +71,14 @@ def _coverage_queries(facts) -> list[str]:
     is deliberately excluded: "other" is not vocabulary that appears in any
     clause, so it would only ever contribute coincidental noise, never a
     genuine signal, to the coverage-hit decision."""
-    queries = [p.value.replace("_", " ") for p in facts.perils if p.value != "other"]
-    queries += [f"{item.category.replace('_', ' ')} {item.description}" for item in facts.line_items]
+    queries: list[str] = []
+    for peril in facts.perils:
+        mapped = PERIL_SEARCH_QUERIES.get(peril)
+        if mapped is not None:
+            queries.append(mapped)
+    queries += [
+        f"{item.category.replace('_', ' ')} {item.description}" for item in facts.line_items
+    ]
     return _dedup(queries)
 
 
