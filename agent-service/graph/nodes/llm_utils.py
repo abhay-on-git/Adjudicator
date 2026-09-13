@@ -11,12 +11,14 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Awaitable, Callable, Never, TypeVar
 
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI, RateLimitError
 from pydantic import BaseModel, ValidationError
 
-from graph.llm_config import LlmProvider, get_async_client, load_llm_settings
+from graph.llm_config import LlmProvider, estimate_cost_usd, get_async_client, load_llm_settings
 
 T = TypeVar("T")
 TModel = TypeVar("TModel", bound=BaseModel)
@@ -25,6 +27,65 @@ RETRYABLE_ERRORS = (RateLimitError, APIConnectionError, APIStatusError)
 
 _THINK_TAG_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
 _JSON_OBJECT_RE = re.compile(r"\{[\s\S]*\}")
+
+# Extraction (and explanation) must be as deterministic as the provider allows.
+# Unset temperature uses the API default (typically 1.0 on OpenAI-compatible
+# chat completions), which is a live source of outcome jitter.
+STRUCTURED_OUTPUT_TEMPERATURE = 0.0
+
+
+@dataclass(frozen=True)
+class LlmUsage:
+    tokens_in: int = 0
+    tokens_out: int = 0
+
+    @property
+    def tokens(self) -> int:
+        return self.tokens_in + self.tokens_out
+
+    @property
+    def cost_usd(self) -> float:
+        return estimate_cost_usd(self.tokens_in, self.tokens_out)
+
+
+_llm_usage: ContextVar[LlmUsage] = ContextVar("llm_usage", default=LlmUsage())
+
+
+def reset_llm_usage() -> None:
+    _llm_usage.set(LlmUsage())
+
+
+def consume_llm_usage() -> LlmUsage:
+    usage = _llm_usage.get()
+    reset_llm_usage()
+    return usage
+
+
+def add_llm_usage(tokens_in: int, tokens_out: int) -> None:
+    current = _llm_usage.get()
+    _llm_usage.set(
+        LlmUsage(
+            tokens_in=current.tokens_in + int(tokens_in or 0),
+            tokens_out=current.tokens_out + int(tokens_out or 0),
+        )
+    )
+
+
+def usage_from_response(response: object) -> tuple[int, int]:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return 0, 0
+    tokens_in = (
+        getattr(usage, "input_tokens", None)
+        or getattr(usage, "prompt_tokens", None)
+        or 0
+    )
+    tokens_out = (
+        getattr(usage, "output_tokens", None)
+        or getattr(usage, "completion_tokens", None)
+        or 0
+    )
+    return int(tokens_in), int(tokens_out)
 
 
 async def call_with_backoff(
@@ -82,7 +143,10 @@ async def _parse_openai(
             {"role": "user", "content": user},
         ],
         text_format=text_format,
+        temperature=STRUCTURED_OUTPUT_TEMPERATURE,
     )
+    tokens_in, tokens_out = usage_from_response(response)
+    add_llm_usage(tokens_in, tokens_out)
     parsed = response.output_parsed
     if parsed is None:
         refusal = getattr(response, "output_text", None) or "model returned no parsed output"
@@ -111,7 +175,10 @@ async def _parse_minimax(
             {"role": "user", "content": user},
         ],
         response_format={"type": "json_object"},
+        temperature=STRUCTURED_OUTPUT_TEMPERATURE,
     )
+    tokens_in, tokens_out = usage_from_response(completion)
+    add_llm_usage(tokens_in, tokens_out)
     content = completion.choices[0].message.content if completion.choices else None
     if not content:
         raise _validation_missing(text_format.__name__, "empty MiniMax completion content")

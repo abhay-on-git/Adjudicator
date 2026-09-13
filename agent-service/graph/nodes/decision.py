@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import (
     AuditEvent,
     AuditEventType,
@@ -49,6 +50,7 @@ def compute_confidence(eligibility: EligibilityResult, risk: RiskResult) -> floa
     return max(0.0, min(1.0, confidence))
 
 
+@timed_node("decision_composition")
 def decision_composition(state: AdjudicationState) -> dict:
     eligibility = state["eligibility_result"]
     risk = state["risk_result"]

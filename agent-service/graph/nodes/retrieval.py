@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType, ClauseRef, Peril
 from graph.state import AdjudicationState
 from mcp_client.client import search_policy
@@ -91,6 +92,7 @@ def _administrative_queries() -> list[str]:
     return ["deductible"]
 
 
+@timed_node("policy_retrieval")
 async def policy_retrieval(state: AdjudicationState) -> dict:
     facts = state["claim_facts"]
     assert facts is not None, "policy_retrieval must run after a successful extraction"

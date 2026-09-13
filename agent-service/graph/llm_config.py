@@ -17,6 +17,16 @@ _DEFAULT_OPENAI_MODEL = "gpt-5.6-luna"
 _DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1"
 _DEFAULT_MINIMAX_MODEL = "MiniMax-M3"
 
+# USD per million tokens — used only for eval `node_metrics.cost_usd`.
+# MiniMax-M3 standard ≤512k pay-as-you-go (published list with the current
+# 50% off applied): $0.30 input / $1.20 output.
+# OpenAI default is a gpt-4o-class placeholder so an OpenAI-provider eval
+# stays internally comparable; override via env if the live model differs.
+_MINIMAX_INPUT_USD_PER_MILLION = 0.30
+_MINIMAX_OUTPUT_USD_PER_MILLION = 1.20
+_OPENAI_INPUT_USD_PER_MILLION = 2.50
+_OPENAI_OUTPUT_USD_PER_MILLION = 10.00
+
 
 class LlmProvider(str, Enum):
     OPENAI = "openai"
@@ -81,6 +91,35 @@ def load_llm_settings() -> LlmSettings:
 
     unreachable: Never = provider
     raise RuntimeError(f"Unhandled LLM provider: {unreachable}")
+
+
+def _usd_per_million(provider: LlmProvider) -> tuple[float, float]:
+    if provider is LlmProvider.MINIMAX:
+        return (
+            float(os.environ.get("LLM_INPUT_USD_PER_MILLION", _MINIMAX_INPUT_USD_PER_MILLION)),
+            float(os.environ.get("LLM_OUTPUT_USD_PER_MILLION", _MINIMAX_OUTPUT_USD_PER_MILLION)),
+        )
+    if provider is LlmProvider.OPENAI:
+        return (
+            float(os.environ.get("LLM_INPUT_USD_PER_MILLION", _OPENAI_INPUT_USD_PER_MILLION)),
+            float(os.environ.get("LLM_OUTPUT_USD_PER_MILLION", _OPENAI_OUTPUT_USD_PER_MILLION)),
+        )
+    unreachable: Never = provider
+    raise RuntimeError(f"Unhandled LLM provider: {unreachable}")
+
+
+def estimate_cost_usd(tokens_in: int, tokens_out: int, settings: LlmSettings | None = None) -> float:
+    """List-price estimate from token counts. Does not require an API key."""
+    if settings is not None:
+        provider = settings.provider
+    else:
+        raw = os.environ.get("LLM_PROVIDER", "minimax").strip().lower()
+        try:
+            provider = LlmProvider(raw)
+        except ValueError:
+            provider = LlmProvider.MINIMAX
+    input_rate, output_rate = _usd_per_million(provider)
+    return (tokens_in / 1_000_000.0) * input_rate + (tokens_out / 1_000_000.0) * output_rate
 
 
 def get_async_client(settings: LlmSettings | None = None) -> AsyncOpenAI:

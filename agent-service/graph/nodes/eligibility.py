@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import AuditEvent, AuditEventType
 from graph.state import AdjudicationState
 from mcp_client.client import compute_payout
@@ -26,6 +27,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@timed_node("eligibility_evaluation")
 async def eligibility_evaluation(state: AdjudicationState) -> dict:
     facts = state["claim_facts"]
     clauses = state.get("retrieved_clauses", [])

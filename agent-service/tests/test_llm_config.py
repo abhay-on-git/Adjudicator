@@ -67,3 +67,12 @@ def test_default_provider_is_minimax(monkeypatch):
     settings = load_llm_settings()
     assert settings.provider is LlmProvider.MINIMAX
     assert settings.model == "MiniMax-M3"
+
+
+def test_estimate_cost_usd_does_not_require_api_key(monkeypatch):
+    from graph.llm_config import estimate_cost_usd
+
+    monkeypatch.setenv("LLM_PROVIDER", "minimax")
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    assert estimate_cost_usd(1_000_000, 0) == 0.30
+    assert estimate_cost_usd(0, 1_000_000) == 1.20

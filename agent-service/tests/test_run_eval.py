@@ -10,11 +10,15 @@ import pytest
 from eval.run_eval import (
     RunResult,
     effective_outcome,
+    parse_args,
     run_single,
     score_accuracy,
     score_consistency,
+    score_cost_latency,
     score_groundedness,
     score_injection_resistance,
+    score_irrelevant_variation,
+    score_stability,
 )
 
 
@@ -141,6 +145,132 @@ def test_score_consistency_drifted_when_outcomes_disagree():
     ]
     report = score_consistency("phrasing", results)
     assert report["consistent"] is False
+
+
+def test_score_irrelevant_variation_zero_variance_by_type():
+    rows = [
+        {
+            "claim_id": "CLM-001",
+            "variant_type": "name",
+            "matched": True,
+            "base_outcome": "approve",
+            "variant_outcome": "approve",
+            "base_amount": 8000.0,
+            "variant_amount": 8000.0,
+            "drift_rank": (0, 0, 0.0),
+            "base_narrative": "base",
+            "variant_narrative": "variant",
+            "base_name": "A",
+            "variant_name": "B",
+            "base_gender": "female",
+            "variant_gender": "female",
+            "base_city": "Pune",
+            "variant_city": "Pune",
+            "amount_delta": 0.0,
+            "base_error": None,
+            "variant_error": None,
+        }
+        for _ in range(1)
+    ]
+    # One drifted gender pair should show up only in that type.
+    rows.append(
+        {
+            "claim_id": "CLM-001",
+            "variant_type": "gender",
+            "matched": False,
+            "base_outcome": "approve",
+            "variant_outcome": "deny",
+            "base_amount": 8000.0,
+            "variant_amount": 0.0,
+            "drift_rank": (1, 0, 8000.0),
+            "base_narrative": "Priya Nair from Pune. Claiming 8000.",
+            "variant_narrative": "Vikram Shah from Pune. Claiming 8000.",
+            "base_name": "Priya Nair",
+            "variant_name": "Vikram Shah",
+            "base_gender": "female",
+            "variant_gender": "male",
+            "base_city": "Pune",
+            "variant_city": "Pune",
+            "amount_delta": 8000.0,
+            "base_error": None,
+            "variant_error": None,
+        }
+    )
+    report = score_irrelevant_variation(rows)
+    assert report["by_type"]["name"]["zero_variance"] is True
+    assert report["by_type"]["gender"]["zero_variance"] is False
+    assert report["by_type"]["gender"]["variance_rate"] == 1.0
+    assert report["worst_case"]["variant_type"] == "gender"
+    assert report["worst_case"]["variant_outcome"] == "deny"
+
+
+def test_score_stability_flags_outcome_flip_and_reports_confidence():
+    runs = [
+        _result(variant_label="repeat_0", outcome="partial", amount=3000.0, confidence=0.7),
+        _result(variant_label="repeat_1", outcome="partial", amount=3000.0, confidence=0.8),
+        _result(variant_label="repeat_2", outcome="approve", amount=8000.0, confidence=0.9),
+        _result(variant_label="repeat_3", outcome="partial", amount=3000.0, confidence=0.75),
+        _result(variant_label="repeat_4", outcome="partial", amount=3000.0, confidence=0.72),
+    ]
+    report = score_stability("CLM-012", "partial", runs)
+    assert report["outcome_changed_across_runs"] is True
+    assert report["outcome_agreed"] == "4/5"
+    assert report["amount_agreed"] == "4/5"
+    assert report["confidence_range"] == [0.7, 0.9]
+
+
+def test_score_cost_latency_groups_fast_vs_slow_and_names_heaviest_node():
+    results = [
+        _result(
+            claim_id="CLM-001",
+            fast_path=True,
+            elapsed_ms=1000.0,
+            node_path=["extraction", "explanation"],
+            node_metrics={
+                "extraction": {"tokens": 800, "cost_usd": 0.002},
+                "explanation": {"tokens": 400, "cost_usd": 0.001},
+            },
+        ),
+        _result(
+            claim_id="CLM-019",
+            fast_path=False,
+            elapsed_ms=3000.0,
+            node_path=["extraction", "explanation"],
+            node_metrics={
+                "extraction": {"tokens": 1200, "cost_usd": 0.004},
+                "explanation": {"tokens": 900, "cost_usd": 0.003},
+            },
+        ),
+        _result(
+            claim_id="CLM-020",
+            fast_path=False,
+            elapsed_ms=500.0,
+            interrupted=True,
+            node_path=["intake_normalize", "extraction", "router"],
+            node_metrics={"extraction": {"tokens": 200, "cost_usd": 0.0004}},
+        ),
+    ]
+    report = score_cost_latency(results)
+    assert report["fast_path"]["n"] == 1
+    assert report["slow_path_full"]["n"] == 1
+    assert report["early_exit"]["n"] == 1
+    assert report["fast_path"]["heaviest_node_by_mean_tokens"] == "extraction"
+    assert report["comparison"]["fast_path_faster"] is True
+    assert report["comparison"]["fast_path_cheaper"] is True
+    assert report["comparison"]["compared_against"] == "slow_path_full"
+
+
+def test_parse_args_suite_consistency():
+    args = parse_args(["--suite", "consistency"])
+    assert args.suite == "consistency"
+
+
+def test_parse_args_claim_ids_and_result_key():
+    args = parse_args(
+        ["--suite", "consistency", "--claim-ids", "CLM-001,CLM-013", "--result-key", "temperature_zero_check"]
+    )
+    assert args.claim_ids == "CLM-001,CLM-013"
+    assert args.result_key == "temperature_zero_check"
 
 
 class _FakeSnapshot:

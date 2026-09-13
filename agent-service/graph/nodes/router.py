@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from graph.nodes.metrics import timed_node
 from graph.schemas import (
     AuditEvent,
     AuditEventType,
@@ -32,6 +33,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@timed_node("router")
 def router(state: AdjudicationState) -> dict:
     facts = state["claim_facts"]
     assert facts is not None, "router must run after a successful extraction"
