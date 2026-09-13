@@ -8,7 +8,7 @@ import type { UnknownBlock } from '../../types'
  */
 export function UnknownBlockView({ block }: { block: UnknownBlock }) {
   return (
-    <div className="block unknown-block">
+    <div className="block card unknown-block">
       <h3>Unrecognized block: {block.type}</h3>
       <pre>{JSON.stringify(block, null, 2)}</pre>
     </div>

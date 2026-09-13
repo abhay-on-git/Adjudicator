@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { policyOptionLabel } from '../lib/format'
 import type { ClaimSubmission } from '../types'
+
+const POLICIES = ['POL-HOME-01', 'POL-HEALTH-01', 'POL-MOTOR-01', 'POL-TRAVEL-01'] as const
 
 const EMPTY: ClaimSubmission = {
   claim_id: '',
@@ -7,7 +10,7 @@ const EMPTY: ClaimSubmission = {
   policy_start_date: '2024-01-10',
   filed_date: '',
   claimant_name: '',
-  claimant_gender: '',
+  claimant_gender: 'female',
   claimant_city: '',
   narrative_text: '',
 }
@@ -24,7 +27,7 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
     setFields((prev) => ({ ...prev, [key]: value }))
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const submission = { ...fields }
     if (!submission.claim_id) delete submission.claim_id
@@ -32,53 +35,134 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
   }
 
   return (
-    <form className="claim-submit-form" onSubmit={handleSubmit}>
-      <h2>Submit a Claim</h2>
-      <label>
-        Claim ID (optional — leave blank to auto-generate; use a fixture ID like CLM-001 to replay one)
-        <input value={fields.claim_id ?? ''} onChange={(e) => update('claim_id', e.target.value)} />
-      </label>
-      <label>
-        Policy ID
-        <select value={fields.policy_id} onChange={(e) => update('policy_id', e.target.value)}>
-          <option value="POL-HOME-01">POL-HOME-01</option>
-          <option value="POL-HEALTH-01">POL-HEALTH-01</option>
-          <option value="POL-MOTOR-01">POL-MOTOR-01</option>
-          <option value="POL-TRAVEL-01">POL-TRAVEL-01</option>
-        </select>
-      </label>
-      <label>
-        Policy Start Date
-        <input type="date" value={fields.policy_start_date} onChange={(e) => update('policy_start_date', e.target.value)} required />
-      </label>
-      <label>
-        Filed Date
-        <input type="date" value={fields.filed_date} onChange={(e) => update('filed_date', e.target.value)} required />
-      </label>
-      <label>
-        Claimant Name
-        <input value={fields.claimant_name} onChange={(e) => update('claimant_name', e.target.value)} required />
-      </label>
-      <label>
-        Claimant Gender
-        <input value={fields.claimant_gender} onChange={(e) => update('claimant_gender', e.target.value)} required />
-      </label>
-      <label>
-        Claimant City
-        <input value={fields.claimant_city} onChange={(e) => update('claimant_city', e.target.value)} required />
-      </label>
-      <label>
-        Narrative
-        <textarea
-          rows={5}
-          value={fields.narrative_text}
-          onChange={(e) => update('narrative_text', e.target.value)}
-          required
-        />
-      </label>
-      <button type="submit" disabled={disabled}>
-        Submit Claim
-      </button>
-    </form>
+    <div className="intake">
+      <div className="intake-intro">
+        <h2>Submit a claim</h2>
+        <p>
+          Enter the policy, claimant, and loss narrative. Facts are extracted from the story;
+          coverage and payout are computed by rules — not by the model.
+        </p>
+      </div>
+      <form className="claim-submit-form card" onSubmit={handleSubmit}>
+        <section className="form-section">
+          <h3>Policy</h3>
+          <p className="section-copy">The schedule this claim will be read against.</p>
+          <div className="field-grid">
+            <div className="field">
+              <label htmlFor="policy_id">Policy</label>
+              <select
+                id="policy_id"
+                value={fields.policy_id}
+                onChange={(e) => update('policy_id', e.target.value)}
+              >
+                {POLICIES.map((id) => (
+                  <option key={id} value={id}>
+                    {policyOptionLabel(id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="policy_start_date">Policy start date</label>
+              <input
+                id="policy_start_date"
+                type="date"
+                value={fields.policy_start_date}
+                onChange={(e) => update('policy_start_date', e.target.value)}
+                required
+              />
+              <span className="field-help">
+                Used for waiting-period rules; it is not checked against a policy schedule.
+              </span>
+            </div>
+            <div className="field">
+              <label htmlFor="filed_date">Filed date</label>
+              <input
+                id="filed_date"
+                type="date"
+                value={fields.filed_date}
+                onChange={(e) => update('filed_date', e.target.value)}
+                required
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h3>Claimant</h3>
+          <p className="section-copy">Who is filing, and from where.</p>
+          <div className="field-grid">
+            <div className="field">
+              <label htmlFor="claimant_name">Name</label>
+              <input
+                id="claimant_name"
+                value={fields.claimant_name}
+                onChange={(e) => update('claimant_name', e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="claimant_city">City</label>
+              <input
+                id="claimant_city"
+                value={fields.claimant_city}
+                onChange={(e) => update('claimant_city', e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="claimant_gender">Gender</label>
+              <select
+                id="claimant_gender"
+                value={fields.claimant_gender}
+                onChange={(e) => update('claimant_gender', e.target.value)}
+                required
+              >
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="other">Other</option>
+                <option value="undisclosed">Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h3>Loss</h3>
+          <p className="section-copy">Describe what happened, when, and what is being claimed.</p>
+          <div className="field field-span">
+            <label htmlFor="narrative_text">Narrative</label>
+            <textarea
+              id="narrative_text"
+              rows={8}
+              value={fields.narrative_text}
+              onChange={(e) => update('narrative_text', e.target.value)}
+              placeholder="On 30 July 2024 a pipe under my kitchen sink burst suddenly. Flooring near the sink was damaged. I am claiming ₹8,000 for repairs."
+              required
+            />
+          </div>
+        </section>
+
+        <details className="advanced-toggle">
+          <summary>Advanced: replay a fixture ID</summary>
+          <div className="field">
+            <label htmlFor="claim_id">Claim ID</label>
+            <input
+              id="claim_id"
+              value={fields.claim_id ?? ''}
+              onChange={(e) => update('claim_id', e.target.value)}
+              placeholder="Leave blank to auto-generate, or use CLM-001"
+            />
+            <span className="field-help">Optional. Fixture IDs replay a known eval case.</span>
+          </div>
+        </details>
+
+        <div className="form-actions">
+          <button className="btn" type="submit" disabled={disabled}>
+            {disabled ? 'Submitting…' : 'Adjudicate claim'}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }

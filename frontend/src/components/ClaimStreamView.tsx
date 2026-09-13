@@ -1,37 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
 import { resumeClaim, streamSSE } from '../api'
-import type { AuditLogEntry, Decision, DecisionUISpec, InteractiveAction } from '../types'
+import { formatDate, policyLabel } from '../lib/format'
+import type { PipelineStatus } from '../lib/pipeline'
+import type {
+  AuditLogEntry,
+  ClaimSubmission,
+  DecisionUISpec,
+  InteractiveAction,
+  NodeUpdate,
+} from '../types'
+import { AuditTimeline } from './AuditTimeline'
 import { BlockRenderer } from './BlockRenderer'
-
-type Status = 'streaming' | 'escalated' | 'done' | 'error'
+import { PipelineStepper } from './PipelineStepper'
+import { ProgressiveSections } from './ProgressiveSections'
 
 interface Props {
   initialResponse: Response
+  submission: ClaimSubmission
   onReset: () => void
+  onBusyChange?: (busy: boolean) => void
 }
 
-export function ClaimStreamView({ initialResponse, onReset }: Props) {
-  const [claimId, setClaimId] = useState<string | null>(null)
+export function ClaimStreamView({ initialResponse, submission, onReset, onBusyChange }: Props) {
+  const [claimId, setClaimId] = useState<string | null>(submission.claim_id ?? null)
   const [nodeLog, setNodeLog] = useState<string[]>([])
+  const [nodeUpdates, setNodeUpdates] = useState<Record<string, NodeUpdate>>({})
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([])
-  const [status, setStatus] = useState<Status>('streaming')
+  const [status, setStatus] = useState<PipelineStatus>('streaming')
   const [escalationReason, setEscalationReason] = useState<string | null>(null)
-  const [decision, setDecision] = useState<Decision | null>(null)
   const [uiSpec, setUiSpec] = useState<DecisionUISpec | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [resuming, setResuming] = useState(false)
   const [resumeText, setResumeText] = useState('')
 
-  // Guards against React StrictMode's double-invoke of effects in dev
-  // consuming the same one-shot Response body twice.
   const consumedResponses = useRef(new WeakSet<Response>())
 
   useEffect(() => {
     if (consumedResponses.current.has(initialResponse)) return
     consumedResponses.current.add(initialResponse)
-    consume(initialResponse)
+    void consume(initialResponse)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialResponse])
+
+  useEffect(() => {
+    onBusyChange?.(status === 'streaming' || resuming)
+  }, [status, resuming, onBusyChange])
 
   async function consume(response: Response) {
     try {
@@ -39,8 +52,12 @@ export function ClaimStreamView({ initialResponse, onReset }: Props) {
         if (evt.event === 'node_complete') {
           setClaimId(evt.data.claim_id)
           setNodeLog((prev) => [...prev, evt.data.node])
+          setNodeUpdates((prev) => ({ ...prev, [evt.data.node]: evt.data.update }))
           if (evt.data.update.audit_log) {
             setAuditLog((prev) => [...prev, ...evt.data.update.audit_log!])
+          }
+          if (evt.data.update.ui_spec) {
+            setUiSpec(evt.data.update.ui_spec)
           }
         } else if (evt.event === 'escalated') {
           setClaimId(evt.data.claim_id)
@@ -49,8 +66,7 @@ export function ClaimStreamView({ initialResponse, onReset }: Props) {
         } else if (evt.event === 'done') {
           setClaimId(evt.data.claim_id)
           setStatus('done')
-          setDecision(evt.data.decision)
-          setUiSpec(evt.data.ui_spec)
+          if (evt.data.ui_spec) setUiSpec(evt.data.ui_spec)
         }
       }
     } catch (err) {
@@ -83,88 +99,90 @@ export function ClaimStreamView({ initialResponse, onReset }: Props) {
     void handleResume(resumeText || 'reviewed manually, no notes')
   }
 
+  const fastPath = nodeUpdates.router?.routing?.fast_path
+  const showDossier = Boolean(uiSpec)
+  const truncatedNarrative =
+    submission.narrative_text.length > 180
+      ? `${submission.narrative_text.slice(0, 180).trim()}…`
+      : submission.narrative_text
+
   return (
     <div className="claim-stream-view">
-      <div className="stream-header">
-        <h2>{claimId ?? 'Submitting…'}</h2>
-        <button onClick={onReset}>New Claim</button>
+      <div className="case-header card">
+        <div>
+          <h2 className="mono">{claimId ?? 'Submitting…'}</h2>
+          <div className="case-meta">
+            <span>
+              {policyLabel(submission.policy_id)} · {submission.policy_id}
+            </span>
+            <span>{submission.claimant_name}</span>
+            <span>{submission.claimant_city}</span>
+            <span>Start {formatDate(submission.policy_start_date)}</span>
+            <span>Filed {formatDate(submission.filed_date)}</span>
+          </div>
+          {truncatedNarrative && <p className="case-narrative">{truncatedNarrative}</p>}
+        </div>
       </div>
 
-      <div className="node-log">
-        <h3>Graph Progress</h3>
-        <ol>
-          {nodeLog.map((node, i) => (
-            <li key={i}>{node}</li>
-          ))}
-          {status === 'streaming' && <li className="pending">…</li>}
-        </ol>
-        <p className="hop-count">
-          {nodeLog.length} node{nodeLog.length === 1 ? '' : 's'} executed
-          {status !== 'streaming' && ' — fewer hops than a multi-peril or degraded claim would take.'}
-        </p>
+      <div className="workspace">
+        <PipelineStepper completed={nodeLog} status={status} fastPath={fastPath} />
+
+        <div className="workspace-feed">
+          {status === 'error' && (
+            <div className="card error-panel">
+              <h3>Something went wrong</h3>
+              <p>{error}</p>
+              <button type="button" className="btn btn-ghost" onClick={onReset}>
+                Back
+              </button>
+            </div>
+          )}
+
+          {status === 'escalated' && (
+            <div className="card escalation-panel">
+              <h3>Escalated for human review</h3>
+              <p>{escalationReason}</p>
+              <label className="field">
+                <span className="field-label">Resolution notes</span>
+                <textarea
+                  rows={3}
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                />
+              </label>
+              <button type="button" className="btn" disabled={resuming} onClick={handleFreeTextResume}>
+                {resuming ? 'Resuming…' : 'Resume as adjuster'}
+              </button>
+            </div>
+          )}
+
+          {showDossier && uiSpec ? (
+            <div className="blocks">
+              {uiSpec.blocks.map((block, i) => (
+                <BlockRenderer
+                  key={`${block.type}-${i}`}
+                  block={block}
+                  onResume={handleActionButton}
+                  resuming={resuming}
+                />
+              ))}
+            </div>
+          ) : (
+            <ProgressiveSections updates={nodeUpdates} status={status} />
+          )}
+
+          {status === 'done' && !uiSpec && (
+            <div className="card block">
+              <p>
+                Resolved without an automated decision (escalated before the graph reached a
+                decision).
+              </p>
+            </div>
+          )}
+
+          <AuditTimeline entries={auditLog} />
+        </div>
       </div>
-
-      {status === 'escalated' && (
-        <div className="block escalation-panel">
-          <h3>Escalated for Human Review</h3>
-          <p>{escalationReason}</p>
-          <label>
-            Resolution notes
-            <textarea rows={3} value={resumeText} onChange={(e) => setResumeText(e.target.value)} />
-          </label>
-          <button disabled={resuming} onClick={handleFreeTextResume}>
-            Resume as Adjuster
-          </button>
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div className="block error-panel">
-          <h3>Something went wrong</h3>
-          <p>{error}</p>
-        </div>
-      )}
-
-      {status === 'done' && uiSpec && (
-        <div className="blocks">
-          {uiSpec.blocks.map((block, i) => (
-            <BlockRenderer key={i} block={block} onResume={handleActionButton} resuming={resuming} />
-          ))}
-        </div>
-      )}
-
-      {status === 'done' && !uiSpec && (
-        <div className="block">
-          <p>
-            Resolved without an automated decision (escalated before the graph reached a decision
-            {decision ? '' : ' — a human handled this claim outside the automated flow'}).
-          </p>
-        </div>
-      )}
-
-      <details className="audit-log">
-        <summary>Audit Log ({auditLog.length})</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>Node</th>
-              <th>Event</th>
-              <th>Detail</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {auditLog.map((entry, i) => (
-              <tr key={i}>
-                <td>{entry.node}</td>
-                <td>{entry.event_type}</td>
-                <td>{entry.detail}</td>
-                <td>{entry.timestamp}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
     </div>
   )
 }

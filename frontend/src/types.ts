@@ -101,19 +101,80 @@ export interface AuditLogEntry {
   timestamp: string
 }
 
+export interface StreamLineItem {
+  description: string
+  category?: string
+  claimed_amount: number
+  allowed_amount?: number
+  verdict?: LineItemVerdict
+  quantity?: number
+}
+
+export interface StreamClaimFacts {
+  policy_id: string
+  policy_start_date: string
+  date_of_loss: string | null
+  perils: string[]
+  line_items: StreamLineItem[]
+  narrative_summary?: string
+  cause_ambiguous?: boolean
+}
+
+export interface StreamRouting {
+  complexity: string
+  is_multi_peril: boolean
+  fast_path: boolean
+  missing_fields: string[]
+  policy_valid: boolean
+}
+
+export interface StreamClause {
+  clause_id: string
+  policy_id: string
+  title: string
+  text: string
+}
+
+export interface StreamEligibility {
+  total_claimed: number
+  total_payable: number
+  deductible_applied: number
+  needs_escalation: boolean
+  escalation_reason: string | null
+  line_items?: StreamLineItem[]
+}
+
+export interface StreamRisk {
+  severity: RiskSeverity
+  flags: string[]
+  duplicate_claim_ids?: string[]
+}
+
 /** One SSE `node_complete` event's `data` payload. `update` is whatever
  * that particular node returned from its LangGraph function — see each
  * node module in agent-service/graph/nodes/ for the exact shape per node;
  * the only key every node update MAY contain is `audit_log`. */
+export interface NodeUpdate {
+  audit_log?: AuditLogEntry[]
+  decision?: Decision
+  ui_spec?: DecisionUISpec
+  claim_facts?: StreamClaimFacts
+  routing?: StreamRouting
+  retrieved_clauses?: StreamClause[]
+  retrieval_had_coverage_hit?: boolean
+  eligibility_result?: StreamEligibility
+  risk_result?: StreamRisk
+  explanation_text?: string
+  injection_flags?: string[]
+  escalation_reason?: string
+  normalized_envelope?: Record<string, unknown>
+  [key: string]: unknown
+}
+
 export interface NodeCompleteEvent {
   claim_id: string
   node: string
-  update: {
-    audit_log?: AuditLogEntry[]
-    decision?: Decision
-    ui_spec?: DecisionUISpec
-    [key: string]: unknown
-  }
+  update: NodeUpdate
 }
 
 export interface EscalatedEvent {
