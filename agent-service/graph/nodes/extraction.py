@@ -142,8 +142,11 @@ async def extraction(state: AdjudicationState) -> dict:
     facts: ClaimFacts | None = None
     if parsed is not None:
         try:
+            dumped = parsed.model_dump()
+            if not dumped.get("date_of_loss") and envelope.get("date_of_loss"):
+                dumped["date_of_loss"] = envelope["date_of_loss"]
             facts = ClaimFacts(
-                **parsed.model_dump(),
+                **dumped,
                 policy_id=envelope["policy_id"],
                 policy_start_date=envelope["policy_start_date"],
             )
@@ -183,8 +186,11 @@ async def extraction(state: AdjudicationState) -> dict:
                 validation_error = retry_parse_error
             elif parsed is not None:
                 try:
+                    dumped = parsed.model_dump()
+                    if not dumped.get("date_of_loss") and envelope.get("date_of_loss"):
+                        dumped["date_of_loss"] = envelope["date_of_loss"]
                     facts = ClaimFacts(
-                        **parsed.model_dump(),
+                        **dumped,
                         policy_id=envelope["policy_id"],
                         policy_start_date=envelope["policy_start_date"],
                     )

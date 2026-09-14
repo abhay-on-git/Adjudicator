@@ -89,7 +89,7 @@ def _persist_node_complete(claim_id: str, data: dict) -> None:
             override_reason=entry.get("override_reason"),
             override_proposed_amount=entry.get("override_proposed_amount"),
         )
-    if node == "decision_composition" and update.get("decision") is not None:
+    if node in ("decision_composition", "escalation", "commit_decision") and update.get("decision") is not None:
         decision = update["decision"]
         Decision.objects.update_or_create(
             claim_id=claim_id,
@@ -100,8 +100,11 @@ def _persist_node_complete(claim_id: str, data: dict) -> None:
                 escalation_reason=decision.get("escalation_reason"),
             ),
         )
-    if node == "ui_composition" and update.get("ui_spec") is not None:
-        Decision.objects.filter(claim_id=claim_id).update(ui_spec=update["ui_spec"])
+    if node in ("ui_composition", "escalation", "commit_decision") and update.get("ui_spec") is not None:
+        Decision.objects.update_or_create(
+            claim_id=claim_id,
+            defaults=dict(ui_spec=update["ui_spec"]),
+        )
 
 
 def _persist_escalated(claim_id: str, data: dict) -> None:
@@ -199,6 +202,7 @@ class ClaimListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         fields = dict(serializer.validated_data)
         claim_id = fields.pop("claim_id", None) or f"CLM-{uuid4().hex[:10]}"
+        date_of_loss = fields.pop("date_of_loss", None)
 
         if Claim.objects.filter(claim_id=claim_id).exists():
             return Response({"detail": f"claim_id {claim_id!r} already submitted."}, status=409)
@@ -206,6 +210,8 @@ class ClaimListCreateView(APIView):
         Claim.objects.create(claim_id=claim_id, status=Claim.STATUS_IN_PROGRESS, **fields)
 
         payload = {**fields, "claim_id": claim_id}
+        if date_of_loss:
+            payload["date_of_loss"] = date_of_loss
         upstream_url = f"{AGENT_SERVICE_BASE_URL}/claims/{claim_id}/adjudicate"
         return _sse_response(_stream_and_persist(claim_id, upstream_url, payload))
 

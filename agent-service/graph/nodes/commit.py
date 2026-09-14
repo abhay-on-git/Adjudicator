@@ -103,24 +103,44 @@ async def commit_decision(state: AdjudicationState) -> dict:
             raise ValueError("override requires a non-empty human reason")
         override_reason = response.reason
         review_flag = await flag_for_review(state["claim_id"], override_reason)
+
+        raw_override_outcome = ""
+        if isinstance(human_response, dict):
+            raw_override_outcome = str(human_response.get("override_outcome", "")).lower()
+
+        if raw_override_outcome in ("deny", "reject"):
+            target_outcome = Outcome.DENY
+            target_amount = 0.0
+            committed_flag = True
+            detail_suffix = "Decision outcome updated to DENY."
+        elif raw_override_outcome == "approve" and response.proposed_amount is not None:
+            target_outcome = Outcome.APPROVE
+            target_amount = float(response.proposed_amount)
+            committed_flag = True
+            detail_suffix = f"Decision outcome updated to APPROVE with custom amount {target_amount}."
+        else:
+            target_outcome = Outcome.ESCALATE
+            target_amount = decision.amount
+            committed_flag = False
+            detail_suffix = "Decision.amount left unchanged; outcome downgraded to escalate."
+
         committed = decision.model_copy(
             update={
-                "outcome": Outcome.ESCALATE,
+                "outcome": target_outcome,
+                "amount": target_amount,
                 "escalation_reason": override_reason,
             }
         )
         event_type = AuditEventType.DECISION_OVERRIDDEN
         proposed_note = (
-            f" Proposed amount noted for audit only: {response.proposed_amount}."
+            f" Proposed amount noted for audit: {response.proposed_amount}."
             if response.proposed_amount is not None
             else ""
         )
         detail = (
             f"Human overrode computed {decision.outcome.value} of {decision.amount}; "
-            f"reason: {override_reason!r}.{proposed_note} "
-            "Decision.amount left unchanged; outcome downgraded to escalate."
+            f"reason: {override_reason!r}.{proposed_note} {detail_suffix}"
         )
-        committed_flag = False
         escalation_reason = committed.escalation_reason
     elif action is InteractiveAction.REQUEST_DOCUMENTS:
         committed = decision.model_copy(

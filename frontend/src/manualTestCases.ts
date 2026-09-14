@@ -22,6 +22,63 @@ export type PolicyId =
   | 'POL-MOTOR-01'
   | 'POL-TRAVEL-01'
 
+const MONTH_MAP: Record<string, string> = {
+  january: '01',
+  jan: '01',
+  february: '02',
+  feb: '02',
+  march: '03',
+  mar: '03',
+  april: '04',
+  apr: '04',
+  may: '05',
+  june: '06',
+  jun: '06',
+  july: '07',
+  jul: '07',
+  august: '08',
+  aug: '08',
+  september: '09',
+  sep: '09',
+  sept: '09',
+  october: '10',
+  oct: '10',
+  november: '11',
+  nov: '11',
+  december: '12',
+  dec: '12',
+}
+
+export function detectDateInText(text: string): string | null {
+  if (!text) return null
+
+  // ISO: YYYY-MM-DD
+  const isoMatch = text.match(/\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/)
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+
+  // Day Month Year: e.g. "30 July 2024", "8th August 2024", "15 Aug 2024"
+  const dmyMatch = text.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(20\d{2})\b/i)
+  if (dmyMatch) {
+    const month = MONTH_MAP[dmyMatch[2].toLowerCase()]
+    if (month) {
+      const day = dmyMatch[1].padStart(2, '0')
+      return `${dmyMatch[3]}-${month}-${day}`
+    }
+  }
+
+  // Month Day, Year: e.g. "July 30, 2024"
+  const mdyMatch = text.match(/\b([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})\b/i)
+  if (mdyMatch) {
+    const month = MONTH_MAP[mdyMatch[1].toLowerCase()]
+    if (month) {
+      const day = mdyMatch[2].padStart(2, '0')
+      return `${mdyMatch[3]}-${month}-${day}`
+    }
+  }
+
+  return null
+}
+
 function testCase(
   id: string,
   policyId: PolicyId,
@@ -47,6 +104,7 @@ function testCase(
       policy_id: policyId,
       policy_start_date: policyStartDate,
       filed_date: filedDate,
+      date_of_loss: detectDateInText(narrativeText) || filedDate,
       claimant_name: claimantName,
       claimant_gender: claimantGender,
       claimant_city: claimantCity,

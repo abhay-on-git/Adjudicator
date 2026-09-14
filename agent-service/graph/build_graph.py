@@ -128,6 +128,12 @@ def _after_evidence_reconciliation(state: AdjudicationState) -> str:
     return "escalation" if state["evidence_reconciliation_failed"] else "explanation"
 
 
+def _after_escalation(state: AdjudicationState) -> str:
+    if not state.get("decision_committed", True):
+        return "escalation"
+    return END
+
+
 def build_graph() -> StateGraph:
     """Returns the UNCOMPILED graph builder — call `.compile(checkpointer=...)`
     on it (see `compile_graph` below for the standard SqliteSaver setup, or
@@ -165,7 +171,7 @@ def build_graph() -> StateGraph:
     graph.add_edge("explanation", "ui_composition")
     graph.add_conditional_edges("ui_composition", _after_ui, ["escalation", "commit_decision"])
     graph.add_edge("commit_decision", END)
-    graph.add_edge("escalation", END)
+    graph.add_conditional_edges("escalation", _after_escalation, ["escalation", END])
 
     return graph
 

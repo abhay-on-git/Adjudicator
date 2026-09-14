@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { policyOptionLabel } from '../lib/format'
-import type { ManualTestCase, PolicyId } from '../manualTestCases'
+import { detectDateInText, type ManualTestCase, type PolicyId } from '../manualTestCases'
 import type { ClaimSubmission } from '../types'
 import { TestCasePanel } from './TestCasePanel'
 
@@ -16,10 +16,18 @@ const EMPTY: ClaimSubmission = {
   policy_id: 'POL-HOME-01',
   policy_start_date: '2024-01-10',
   filed_date: '',
+  date_of_loss: '',
   claimant_name: '',
   claimant_gender: 'female',
   claimant_city: '',
   narrative_text: '',
+}
+
+interface MissingPromptState {
+  missingLossDate: boolean
+  missingAmount: boolean
+  lossDateValue: string
+  amountValue: string
 }
 
 interface Props {
@@ -30,6 +38,7 @@ interface Props {
 export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
   const [fields, setFields] = useState<ClaimSubmission>(EMPTY)
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
+  const [missingPrompt, setMissingPrompt] = useState<MissingPromptState | null>(null)
 
   function update<K extends keyof ClaimSubmission>(key: K, value: ClaimSubmission[K]) {
     setSelectedTestId(null)
@@ -60,19 +69,88 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
       policy_id: fields.policy_id,
       policy_start_date: fields.policy_start_date || '2024-01-10',
       filed_date: '',
+      date_of_loss: '',
       claimant_name: '',
       claimant_gender: 'female',
       claimant_city: '',
       narrative_text: '',
     })
     setSelectedTestId(null)
+    setMissingPrompt(null)
+  }
+
+  function finalizeAndSubmit(
+    baseFields: ClaimSubmission,
+    resolvedDate?: string | null,
+    extraAmount?: string,
+  ) {
+    const submission = { ...baseFields }
+    if (!submission.claim_id) delete submission.claim_id
+
+    let narrative = submission.narrative_text.trim()
+
+    if (resolvedDate) {
+      submission.date_of_loss = resolvedDate
+      // If narrative doesn't clearly mention a date, prepend it so the text is clear
+      if (!detectDateInText(narrative)) {
+        narrative = `Incident date: ${resolvedDate}. ${narrative}`
+      }
+    }
+
+    if (
+      extraAmount &&
+      !/(?:₹|rs\.?|inr|\$|\bamount\b|\bclaiming\b|\bcost\b|\btotal\b)\s*[\d,]+|\b\d{3,}\b/i.test(narrative)
+    ) {
+      narrative = `${narrative} Claiming ₹${extraAmount} for loss/repairs.`
+    }
+
+    submission.narrative_text = narrative
+    setFields((prev) => ({
+      ...prev,
+      date_of_loss: submission.date_of_loss || prev.date_of_loss,
+      narrative_text: narrative,
+    }))
+    setMissingPrompt(null)
+    onSubmit(submission)
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const submission = { ...fields }
-    if (!submission.claim_id) delete submission.claim_id
-    onSubmit(submission)
+
+    const detectedDate =
+      fields.date_of_loss?.trim() || detectDateInText(fields.narrative_text)
+    const hasAmount =
+      /(?:₹|rs\.?|inr|\$|\bamount\b|\bclaiming\b|\bcost\b|\btotal\b)\s*[\d,]+|\b\d{3,}\b/i.test(
+        fields.narrative_text,
+      )
+
+    const missingLossDate = !detectedDate
+    const missingAmount = !hasAmount
+
+    // If required details have not been retrieved from the narrative or form, prompt the claimant
+    if (missingLossDate || missingAmount) {
+      setMissingPrompt({
+        missingLossDate,
+        missingAmount,
+        lossDateValue: fields.date_of_loss || fields.filed_date || '',
+        amountValue: '',
+      })
+      return
+    }
+
+    finalizeAndSubmit(fields, detectedDate)
+  }
+
+  function handleConfirmMissingDetails() {
+    if (!missingPrompt) return
+    if (missingPrompt.missingLossDate && !missingPrompt.lossDateValue) {
+      return
+    }
+    finalizeAndSubmit(
+      fields,
+      missingPrompt.lossDateValue || fields.date_of_loss || null,
+      missingPrompt.amountValue?.trim() || undefined,
+    )
   }
 
   return (
@@ -116,6 +194,19 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
               />
               <span className="field-help">
                 Used for waiting-period rules; it is not checked against a policy schedule.
+              </span>
+            </div>
+            <div className="field">
+              <label htmlFor="date_of_loss">Incident date (Date of loss)</label>
+              <input
+                id="date_of_loss"
+                type="date"
+                value={fields.date_of_loss || ''}
+                onChange={(e) => update('date_of_loss', e.target.value)}
+                placeholder="YYYY-MM-DD"
+              />
+              <span className="field-help">
+                When the loss or incident occurred. Evaluated for active coverage and waiting periods.
               </span>
             </div>
             <div className="field">
@@ -216,6 +307,99 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
           </button>
         </div>
       </form>
+
+      {/* Verification / Details Retrieval Modal before adjudication */}
+      {missingPrompt && (
+        <div
+          className="verification-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="verify-details-title"
+        >
+          <div className="verification-modal-card">
+            <div className="verification-modal-header">
+              <h3 id="verify-details-title">Confirm claim details before adjudication</h3>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setMissingPrompt(null)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="verification-modal-body">
+              <div className="verification-notice">
+                <strong>Required details confirmation</strong>
+                <p>
+                  Before proceeding to adjudicate the claim, all essential facts must be retrieved
+                  from the claimant so that the issue is completely clear and the policy rules can evaluate
+                  coverage, waiting periods, and deductible limits.
+                </p>
+              </div>
+
+              {missingPrompt.missingLossDate && (
+                <div className="field">
+                  <label htmlFor="confirm_date_of_loss">
+                    Incident date (Date of loss) *
+                  </label>
+                  <input
+                    id="confirm_date_of_loss"
+                    type="date"
+                    value={missingPrompt.lossDateValue}
+                    onChange={(e) =>
+                      setMissingPrompt((prev) =>
+                        prev ? { ...prev, lossDateValue: e.target.value } : null,
+                      )
+                    }
+                    required
+                  />
+                  <span className="field-help">
+                    Date when the incident or damage occurred. Required to evaluate waiting periods and policy eligibility.
+                  </span>
+                </div>
+              )}
+
+              {missingPrompt.missingAmount && (
+                <div className="field">
+                  <label htmlFor="confirm_amount">Claimed amount (₹)</label>
+                  <input
+                    id="confirm_amount"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 15000"
+                    value={missingPrompt.amountValue}
+                    onChange={(e) =>
+                      setMissingPrompt((prev) =>
+                        prev ? { ...prev, amountValue: e.target.value } : null,
+                      )
+                    }
+                  />
+                  <span className="field-help">
+                    Estimated or incurred expense being claimed from the policy.
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="verification-modal-footer">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setMissingPrompt(null)}
+              >
+                Back to edit narrative
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={missingPrompt.missingLossDate && !missingPrompt.lossDateValue}
+                onClick={handleConfirmMissingDetails}
+              >
+                Confirm details & adjudicate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
