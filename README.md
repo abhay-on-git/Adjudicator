@@ -24,7 +24,23 @@ claim traced end to end through the real graph.
   MCP client/server (`mcp_client/`, `mcp_server/`), and the streaming
   routes (`routes.py`).
 
-## Setup
+## Quick Start (All Services)
+
+To launch the entire project stack (Agent Service on `:8001`, Django Backend on `:8000`, and Frontend on `:5173`) with automated readiness checks and browser launch:
+
+```powershell
+project start
+```
+
+Available commands from any terminal globally:
+- `project start` — launch all services in interactive console windows
+- `project start -b` — launch all services in background (headless)
+- `project start -w` — launch in foreground; automatically stop all services on `Ctrl+C`
+- `project status` — inspect health, URLs, ports, and active PIDs
+- `project stop` — stop all 3 services cleanly
+- `project restart` — restart all services
+
+## Setup (Individual Services)
 
 Each service has its own virtualenv and dependencies — they are
 intentionally decoupled (see `DESIGN.md`'s "Service split" section).

@@ -73,6 +73,11 @@ class LineItem(BaseModel):
         "the extractor never resolves the coverage question itself. See "
         "DESIGN.md fork 'evidence tags vs. LLM-resolved coverage'.",
     )
+    peril: Peril | None = Field(
+        default=None,
+        description="The specific peril governing this line item (e.g. 'fire', 'theft', 'water_damage'). "
+        "In multi-peril claims, each line item must specify its own peril.",
+    )
 
 
 class ExtractedNarrativeFacts(BaseModel):

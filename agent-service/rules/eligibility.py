@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from graph.schemas import ClaimFacts, LineItem, LineItemEligibility, LineItemVerdict
+from graph.schemas import ClaimFacts, LineItem, LineItemEligibility, LineItemVerdict, Peril
 
 
 def _parse_date(value: str) -> date | None:
@@ -42,6 +42,47 @@ def _days_between(later: str | None, earlier: str | None) -> int | None:
     return (d_later - d_earlier).days
 
 
+def resolve_item_peril(item: LineItem, facts: ClaimFacts) -> Peril | None:
+    """Returns the line item's own peril, inferring from its category/tags/description
+    only if not explicitly set on the item."""
+    if item.peril is not None:
+        return item.peril
+
+    item_cat = (item.category or "").lower()
+    item_desc = (item.description or "").lower()
+    tags = set(item.evidence_tags)
+
+    theft_keywords = {
+        "jewellery", "jewelry", "valuables", "watch", "watches",
+        "jewelry_and_electronics", "electronics", "gadgets", "theft",
+        "stolen", "burglary", "break-in"
+    }
+    if (
+        item_cat in theft_keywords
+        or any(k in item_cat for k in ("theft", "jewel", "valuab", "watch", "electron"))
+        or any(k in item_desc for k in ("stolen", "theft", "break-in", "burglar", "robbery"))
+        or "forcible_entry_evidence" in tags
+    ):
+        return Peril.THEFT
+
+    water_keywords = {"cabinetry", "fixed_furniture", "countertop", "flooring", "plumbing", "water_damage"}
+    if (
+        item_cat in water_keywords
+        or "sudden_discharge" in tags
+        or "pre_existing_seepage_mentioned" in tags
+        or any(k in item_desc for k in ("water", "pipe", "plumb", "leak", "seep", "seepage", "overflow", "dampness"))
+    ):
+        return Peril.WATER_DAMAGE
+
+    if "fire" in item_cat or any(k in item_desc for k in ("fire", "burn", "scorch", "smoke")):
+        return Peril.FIRE
+
+    if len(facts.perils) == 1:
+        return facts.perils[0]
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # POL-HOME-01
 # ---------------------------------------------------------------------------
@@ -49,7 +90,10 @@ def _days_between(later: str | None, earlier: str | None) -> int | None:
 HOME_DEDUCTIBLE = 5000.0
 HOME_DEDUCTIBLE_CLAUSE = "§2.3"
 HOME_CABINETRY_CATEGORIES = {"cabinetry", "fixed_furniture", "countertop"}
-HOME_VALUABLES_CATEGORIES = {"jewellery", "valuables", "watch"}
+HOME_VALUABLES_CATEGORIES = {
+    "jewellery", "jewelry", "valuables", "watch", "watches",
+    "jewelry_and_electronics", "electronics", "gadgets",
+}
 # POL-HOME-01 covers plumbing discharge / fire / forcible-entry theft — not
 # river/flash flood. Live extractors often mis-tag flood as water_damage +
 # sudden_discharge; catch that before the plumbing path wrongly allows it.
@@ -81,6 +125,7 @@ def home_flood_or_overflow_indicated(facts: ClaimFacts, item: LineItem | None = 
 
 def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligibility:
     tags = set(item.evidence_tags) | set(facts.evidence_tags)
+    item_peril = resolve_item_peril(item, facts)
 
     if home_flood_or_overflow_indicated(facts, item):
         return LineItemEligibility(
@@ -105,8 +150,8 @@ def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligib
         )
 
     days_since_start = _days_between(facts.date_of_loss, facts.policy_start_date)
-    is_fire = "fire" in {p.value for p in facts.perils}
-    if not is_fire and days_since_start is not None and days_since_start < 15:
+    is_item_fire = (item_peril == Peril.FIRE)
+    if not is_item_fire and days_since_start is not None and days_since_start < 15:
         return LineItemEligibility(
             description=item.description,
             claimed_amount=item.claimed_amount,
@@ -117,18 +162,52 @@ def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligib
             "15-day general waiting period (§3.1.1) applies to non-fire perils.",
         )
 
-    if item.category in HOME_VALUABLES_CATEGORIES:
+    # 1. Fire path (§4.1)
+    if item_peril == Peril.FIRE:
+        return LineItemEligibility(
+            description=item.description,
+            claimed_amount=item.claimed_amount,
+            verdict=LineItemVerdict.ALLOWED,
+            allowed_amount=item.claimed_amount,
+            governing_clause_ids=["§4.1"],
+            reason="Fire damage is covered in full under §4.1.",
+        )
+
+    # 2. Theft / burglary path (§5.1, §5.2, §7.3)
+    item_tags = set(item.evidence_tags)
+    is_theft = (
+        item_peril in (Peril.THEFT, Peril.MOTOR_THEFT)
+        or item.category in HOME_VALUABLES_CATEGORIES
+        or any(k in item.category.lower() for k in ("theft", "jewel", "valuab", "watch", "electron"))
+        or any(k in item.description.lower() for k in ("stolen", "theft", "break-in", "burglar", "robbery"))
+        or "forcible_entry_evidence" in item_tags
+    )
+    if is_theft:
         if "forcible_entry_evidence" in tags:
-            allowed = min(item.claimed_amount, 100_000.0)
-            verdict = LineItemVerdict.ALLOWED if allowed == item.claimed_amount else LineItemVerdict.REDUCED
+            is_valuable = (
+                item.category in HOME_VALUABLES_CATEGORIES
+                or any(k in item.category.lower() for k in ("jewel", "valuab", "watch", "electron"))
+                or any(k in item.description.lower() for k in ("jewel", "valuab", "watch", "electron", "laptop", "gold", "silver"))
+            )
+            if is_valuable:
+                allowed = min(item.claimed_amount, 100_000.0)
+                verdict = LineItemVerdict.ALLOWED if allowed == item.claimed_amount else LineItemVerdict.REDUCED
+                return LineItemEligibility(
+                    description=item.description,
+                    claimed_amount=item.claimed_amount,
+                    verdict=verdict,
+                    allowed_amount=allowed,
+                    governing_clause_ids=["§5.1", "§5.2"],
+                    reason="Theft with evidence of forcible entry is covered under §5.1, "
+                    "capped at ₹1,00,000 in aggregate for valuables under §5.2.",
+                )
             return LineItemEligibility(
                 description=item.description,
                 claimed_amount=item.claimed_amount,
-                verdict=verdict,
-                allowed_amount=allowed,
-                governing_clause_ids=["§5.1", "§5.2"],
-                reason="Theft with evidence of forcible entry is covered under §5.1, "
-                "capped at ₹1,00,000 in aggregate for valuables under §5.2.",
+                verdict=LineItemVerdict.ALLOWED,
+                allowed_amount=item.claimed_amount,
+                governing_clause_ids=["§5.1"],
+                reason="Theft of contents with evidence of forcible entry is covered in full under §5.1.",
             )
         return LineItemEligibility(
             description=item.description,
@@ -140,15 +219,19 @@ def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligib
             "excluded under §7.3 (see §5.1).",
         )
 
-    # Water damage / cabinetry path — the required exclusion-gates-sub-limit interaction.
-    # Scoped to THIS item's own category/tags, not the claim's overall peril list —
-    # a multi-peril claim (e.g. fire + theft + one ambiguous water-damage item)
-    # must not route its fire/theft items through the water-damage exclusion
-    # just because water_damage also appears somewhere in facts.perils.
+    # 3. Water damage / cabinetry path — the required exclusion-gates-sub-limit interaction.
+    # Scoped to THIS item's own category/tags/peril, not the claim's overall peril list.
     has_seepage_tag = "pre_existing_seepage_mentioned" in tags
     has_sudden_tag = "sudden_discharge" in tags
-    if item.category in HOME_CABINETRY_CATEGORIES or has_seepage_tag or has_sudden_tag:
-
+    is_water = (
+        item_peril == Peril.WATER_DAMAGE
+        or item.category in HOME_CABINETRY_CATEGORIES
+        or "pre_existing_seepage_mentioned" in item_tags
+        or "sudden_discharge" in item_tags
+        or (has_seepage_tag and item_peril is None)
+        or (has_sudden_tag and item_peril is None)
+    )
+    if is_water:
         if facts.cause_ambiguous or (has_seepage_tag and has_sudden_tag):
             return LineItemEligibility(
                 description=item.description,
@@ -195,16 +278,6 @@ def evaluate_line_item_home(item: LineItem, facts: ClaimFacts) -> LineItemEligib
             governing_clause_ids=["§4.2.1"],
             reason="Sudden and accidental discharge from plumbing is covered in full "
             "under §4.2.1.",
-        )
-
-    if is_fire:
-        return LineItemEligibility(
-            description=item.description,
-            claimed_amount=item.claimed_amount,
-            verdict=LineItemVerdict.ALLOWED,
-            allowed_amount=item.claimed_amount,
-            governing_clause_ids=["§4.1"],
-            reason="Fire damage is covered in full under §4.1.",
         )
 
     return LineItemEligibility(
