@@ -223,3 +223,53 @@ def test_home_flood_mis_tagged_as_water_damage_still_escalates_uncovered():
     assert result.total_payable == 0.0
     assert result.needs_escalation
     assert "Flood" in (result.escalation_reason or "")
+
+
+def test_connected_multi_peril_fire_and_theft_each_match_own_clause():
+    """Regression test for CLM-48be7f0da1: a claim with fire and theft where theft occurred
+    through a fire-damaged window. Each line item must evaluate strictly against its own peril
+    and governing clause (§4.1 for fire, §5.1/§5.2 for theft), with §5.2's ₹1,00,000 sub-limit
+    genuinely evaluated against the theft amount, never cross-contaminating with fire (§4.1)."""
+    facts = make_facts(
+        policy_id="POL-HOME-01",
+        policy_start_date="2024-01-10",
+        date_of_loss="2024-09-10",
+        perils=[Peril.FIRE, Peril.THEFT],
+        evidence_tags=[],
+        line_items=[
+            LineItem(
+                description="Fire damage to kitchen and living room",
+                category="structural_damage",
+                claimed_amount=210_000,
+                peril=Peril.FIRE,
+            ),
+            LineItem(
+                description="Jewelry and electronics stolen during break-in through fire-damaged window",
+                category="jewelry_and_electronics",
+                claimed_amount=85_000,
+                peril=Peril.THEFT,
+                evidence_tags=["forcible_entry_evidence"],
+            ),
+        ],
+    )
+    result = compute_payout(facts, clauses=[])
+    fire_item, theft_item = result.line_items
+
+    # Fire item matches §4.1 only
+    assert fire_item.verdict == LineItemVerdict.ALLOWED
+    assert fire_item.allowed_amount == 210_000.0
+    assert fire_item.governing_clause_ids == ["§4.1"]
+
+    # Theft item matches §5.1 and §5.2 only, not §4.1
+    assert theft_item.verdict == LineItemVerdict.ALLOWED
+    assert theft_item.allowed_amount == 85_000.0
+    assert theft_item.governing_clause_ids == ["§5.1", "§5.2"]
+    assert "§4.1" not in theft_item.governing_clause_ids
+    assert "capped at ₹1,00,000" in theft_item.reason
+
+    # Overall payout: (210,000 + 85,000) - 5,000 deductible = 290,000
+    assert result.total_claimed == 295_000.0
+    assert result.total_payable == 290_000.0
+    assert result.deductible_applied == 5_000.0
+    assert set(result.clauses_used) == {"§2.3", "§4.1", "§5.1", "§5.2"}
+

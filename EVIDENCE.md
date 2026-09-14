@@ -69,7 +69,7 @@ just visually apparent from the graph diagram.
 
 | Suite | Count | Result |
 |---|---|---|
-| `agent-service` (`pytest`) | 169 | all passing |
+| `agent-service` (`pytest`) | 170 | all passing |
 | `backend` (Django `manage.py test`) | 10 | all passing |
 | `frontend` (`tsc --noEmit` + `vite build`) | — | clean, no type errors, production bundle builds |
 
@@ -230,3 +230,33 @@ The eval harness recorded `outcome=None` / `variant_error=ValidationError`
 instead of retry-once-then-escalate `"extraction failed"`. That is a P0
 degradation gap, distinct from the 21.3% identity-variance table. The retry
 trigger now treats parse-time `ValidationError` as Mode 2.
+
+## 7. Peril-to-Clause Matching Fix (Multi-Peril Claim CLM-48be7f0da1)
+
+### 7.1 Problem Diagnosed
+On connected multi-peril claims such as `CLM-48be7f0da1` (a claim involving structural fire damage and a subsequent break-in theft of jewelry and electronics through the fire-damaged window), the theft line item was matched to §4.1 (Fire — Covered) instead of §5.1 (Theft Following Forcible Entry — Covered) and §5.2 (Valuables Sub-limit).
+
+Root cause:
+1. `LineItem` in `graph/schemas.py` lacked a `peril` field; items in a multi-peril claim could not preserve their individual peril from extraction.
+2. `evaluate_line_item_home()` in `rules/eligibility.py` relied on a claim-wide `is_fire = "fire" in {p.value for p in facts.perils}` check as a fallback. Any line item whose category did not match the narrow `HOME_VALUABLES_CATEGORIES = {"jewellery", "valuables", "watch"}` fell through to `if is_fire:` and was marked as §4.1 Fire damage.
+3. The LLM extraction assigned `category="jewelry_and_electronics"`, which bypassed the narrow British spelling set.
+
+### 7.2 Resolution Implemented
+1. **Schema**: Added optional `peril: Peril | None` to `LineItem` and updated extraction prompt instructions to tag each line item's peril independently in multi-peril claims.
+2. **Peril Resolution**: Added `resolve_item_peril(item, facts)` in `rules/eligibility.py` to evaluate each item's explicit peril, category keywords, item tags, and description.
+3. **Valuables Categories**: Expanded `HOME_VALUABLES_CATEGORIES` to include `"jewelry"`, `"jewelry_and_electronics"`, `"electronics"`, and `"gadgets"`.
+4. **Independent Clause Routing**: In `evaluate_line_item_home()`, routed Fire items (`item_peril == Peril.FIRE`) strictly to §4.1, and Theft items (`item_peril in (Peril.THEFT, Peril.MOTOR_THEFT)` or valuable/theft items) strictly to §5.1 and §5.2. Item-level tags prevent claim-wide evidence tags (e.g. `forcible_entry_evidence`) from cross-contaminating non-theft items.
+5. **Regression Test**: Added `test_connected_multi_peril_fire_and_theft_each_match_own_clause` to `agent-service/tests/test_payout_engine.py`. Golden set fixtures verified with zero regressions (170/170 tests passing).
+
+### 7.3 Before and After Comparison on CLM-48be7f0da1
+
+| Line Item | Claimed | Before Fix Verdict | Before Governing Clauses | Before Explanation | After Fix Verdict | After Governing Clauses | After Explanation |
+|---|---|---|---|---|---|---|---|
+| **Item 0**: Fire damage to kitchen and living room | ₹2,10,000 | Allowed (₹2,10,000) | §4.1 | Fire damage is covered in full under §4.1. | Allowed (₹2,10,000) | §4.1 | Fire damage is covered in full under §4.1. |
+| **Item 1**: Jewelry and electronics stolen during break-in through fire-damaged window | ₹85,000 | Allowed (₹85,000) | **§4.1** *(Wrong peril matching)* | **Fire damage is covered in full under §4.1.** *(Bug)* | Allowed (₹85,000) | **§5.1, §5.2** *(Correct theft & valuables limit)* | **Theft with evidence of forcible entry is covered under §5.1, capped at ₹1,00,000 in aggregate for valuables under §5.2.** |
+
+**Financial Totals**:
+- Total Claimed: ₹2,95,000
+- Deductible Applied: ₹5,000 (§2.3)
+- Net Payable: ₹2,90,000
+- Governing Clauses Used: §2.3, §4.1, §5.1, §5.2 (Before fix: §2.3, §4.1)

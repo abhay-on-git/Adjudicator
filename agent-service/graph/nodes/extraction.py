@@ -49,6 +49,11 @@ you only report what the text says.
 Rules:
 - `line_items[].claimed_amount` is what the CLAIMANT says they lost, verbatim from \
   their account — not what should be paid.
+- For each item in `line_items`, set `peril` to the specific peril causing that item's loss \
+  (e.g. 'fire', 'theft', 'water_damage'). In multi-peril claims, assign each line item \
+  its own peril independently (e.g. fire-damaged items have peril 'fire', while items \
+  stolen during a burglary have peril 'theft'), never inheriting a single peril across \
+  all line items.
 - `evidence_tags` (claim-level and per-line-item) should only use this controlled \
   vocabulary, and only when the text actually supports the tag: {_EVIDENCE_TAG_VOCABULARY}
 - Set `cause_ambiguous=true` when the narrative itself does not clearly resolve which \

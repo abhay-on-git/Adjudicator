@@ -168,7 +168,8 @@ def test_missing_field_escalates_then_resume_completes(client, monkeypatch):
 
     final_status = client.get("/claims/CLM-ROUTE-002").json()
     assert final_status["status"] == "done"
-    assert final_status["decision"] is None  # escalated before decision_composition ever ran
+    assert final_status["decision"] is not None
+    assert final_status["decision"]["outcome"] == "approve"
 
 
 def test_resume_without_pending_escalation_returns_409(client):
