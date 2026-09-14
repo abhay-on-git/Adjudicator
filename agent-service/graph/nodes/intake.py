@@ -63,6 +63,7 @@ def intake_normalize(state: AdjudicationState) -> dict:
         "policy_id": raw.get("policy_id"),
         "policy_start_date": raw.get("policy_start_date"),
         "filed_date": raw.get("filed_date"),
+        "date_of_loss": raw.get("date_of_loss"),
         "claimant_name": raw.get("claimant_name"),
         "claimant_gender": raw.get("claimant_gender"),
         "claimant_city": raw.get("claimant_city"),

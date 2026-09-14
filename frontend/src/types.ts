@@ -12,13 +12,33 @@
 export type Outcome = 'approve' | 'deny' | 'partial' | 'escalate'
 export type LineItemVerdict = 'allowed' | 'reduced' | 'excluded'
 export type RiskSeverity = 'none' | 'low' | 'medium' | 'high'
-export type InteractiveAction = 'approve' | 'override' | 'request_documents'
+export type InteractiveAction = 'approve' | 'override' | 'request_documents' | 'submit_documents'
+export interface ApprovePayload {
+  action: 'approve'
+  reason: string
+}
 export interface OverridePayload {
   action: 'override'
   reason: string
   proposed_amount?: number
+  override_outcome?: 'approve' | 'deny' | 'partial'
 }
-export type HumanResponse = InteractiveAction | OverridePayload
+export interface RequestDocumentsPayload {
+  action: 'request_documents'
+  requested_documents: string[]
+  reason?: string
+}
+export interface SubmitDocumentsPayload {
+  action: 'submit_documents'
+  reason?: string
+}
+export type HumanResponse =
+  | InteractiveAction
+  | ApprovePayload
+  | OverridePayload
+  | RequestDocumentsPayload
+  | SubmitDocumentsPayload
+  | Record<string, unknown>
 export type ClaimStatus = 'pending' | 'in_progress' | 'escalated' | 'awaiting_confirm' | 'done'
 
 export interface Decision {
@@ -71,6 +91,8 @@ export interface InteractiveActionsBlock {
   available_actions: InteractiveAction[]
   resumes_at_node: string | null
   is_pending: boolean
+  requested_documents?: string[]
+  documents_submitted?: boolean
 }
 
 export interface RiskSignalBlock {
@@ -213,6 +235,7 @@ export interface ClaimSubmission {
   policy_id: string
   policy_start_date: string
   filed_date: string
+  date_of_loss?: string
   claimant_name: string
   claimant_gender: string
   claimant_city: string
@@ -224,6 +247,7 @@ export interface ClaimDetail {
   policy_id: string
   policy_start_date: string
   filed_date: string
+  date_of_loss?: string
   claimant_name: string
   claimant_gender: string
   claimant_city: string

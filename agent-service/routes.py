@@ -49,6 +49,7 @@ class ClaimSubmissionRequest(BaseModel):
     policy_id: str
     policy_start_date: str
     filed_date: str
+    date_of_loss: str | None = None
     claimant_name: str
     claimant_gender: str
     claimant_city: str

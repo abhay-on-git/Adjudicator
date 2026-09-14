@@ -14,6 +14,7 @@ class ClaimSubmitSerializer(serializers.Serializer):
     policy_id = serializers.CharField()
     policy_start_date = serializers.CharField()
     filed_date = serializers.CharField()
+    date_of_loss = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     claimant_name = serializers.CharField()
     claimant_gender = serializers.CharField()
     claimant_city = serializers.CharField()

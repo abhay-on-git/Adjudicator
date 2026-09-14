@@ -122,9 +122,15 @@ def estimate_cost_usd(tokens_in: int, tokens_out: int, settings: LlmSettings | N
     return (tokens_in / 1_000_000.0) * input_rate + (tokens_out / 1_000_000.0) * output_rate
 
 
+# Per-attempt HTTP timeout. MiniMax-M3 with thinking left on can sit silent
+# for minutes; the UI then looks frozen on Extract facts (no SSE until the
+# node returns). Fail the attempt so backoff/degradation can run.
+_LLM_HTTP_TIMEOUT_SECONDS = 60.0
+
+
 def get_async_client(settings: LlmSettings | None = None) -> AsyncOpenAI:
     cfg = settings if settings is not None else load_llm_settings()
-    kwargs: dict = {"api_key": cfg.api_key}
+    kwargs: dict = {"api_key": cfg.api_key, "timeout": _LLM_HTTP_TIMEOUT_SECONDS}
     if cfg.base_url:
         kwargs["base_url"] = cfg.base_url
     return AsyncOpenAI(**kwargs)

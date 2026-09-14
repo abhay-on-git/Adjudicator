@@ -155,30 +155,56 @@ export function ClaimStreamView({ initialResponse, submission, onReset, onBusyCh
             <div className="card escalation-panel">
               <h3>Escalated for human review</h3>
               <p>{escalationReason}</p>
-              <label className="field">
-                <span className="field-label">Resolution notes</span>
-                <textarea
-                  rows={3}
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                />
-              </label>
-              <button type="button" className="btn" disabled={resuming} onClick={handleFreeTextResume}>
-                {resuming ? 'Resuming…' : 'Resume as adjuster'}
-              </button>
+              {escalationReason?.toLowerCase().includes('missing') && (
+                <div className="escalation-missing-hint">
+                  <p>
+                    Essential facts (such as the incident date or claimed items) were missing from the
+                    narrative. You can supply resolution notes below to close this review, or return to
+                    edit and supply the missing details to adjudicate the claim.
+                  </p>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={onReset}>
+                    Edit claim details & re-adjudicate
+                  </button>
+                </div>
+              )}
+              {/* Only show fallback free-text adjuster input if no dossier / UI spec is available */}
+              {!uiSpec && (
+                <>
+                  <label className="field">
+                    <span className="field-label">Resolution notes</span>
+                    <textarea
+                      rows={3}
+                      value={resumeText}
+                      onChange={(e) => setResumeText(e.target.value)}
+                    />
+                  </label>
+                  <button type="button" className="btn" disabled={resuming} onClick={handleFreeTextResume}>
+                    {resuming ? 'Resuming…' : 'Resume as adjuster'}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
           {showDossier && uiSpec ? (
             <div className="blocks">
-              {uiSpec.blocks.map((block, i) => (
-                <BlockRenderer
-                  key={`${block.type}-${i}`}
-                  block={block}
-                  onResume={handleActionButton}
-                  resuming={resuming}
-                />
-              ))}
+              {(() => {
+                // Prioritize pending interactive actions block at the very top of the dossier
+                const pendingActions = uiSpec.blocks.filter(
+                  (b) => b.type === 'interactive_actions' && (b as any).is_pending,
+                )
+                const otherBlocks = uiSpec.blocks.filter(
+                  (b) => !(b.type === 'interactive_actions' && (b as any).is_pending),
+                )
+                return [...pendingActions, ...otherBlocks].map((block, i) => (
+                  <BlockRenderer
+                    key={`${block.type}-${i}`}
+                    block={block}
+                    onResume={handleActionButton}
+                    resuming={resuming}
+                  />
+                ))
+              })()}
             </div>
           ) : (
             <ProgressiveSections updates={nodeUpdates} status={status} />

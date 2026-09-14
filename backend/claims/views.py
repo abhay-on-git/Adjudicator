@@ -13,6 +13,7 @@ all; it serves entirely from what's already been persisted.
 """
 
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -25,8 +26,13 @@ from rest_framework.views import APIView
 from .models import AuditEvent, Claim, Decision
 from .serializers import ClaimDetailSerializer, ClaimSubmitSerializer, ResumeSerializer
 
+logger = logging.getLogger(__name__)
+
 AGENT_SERVICE_BASE_URL = "http://127.0.0.1:8001"
-UPSTREAM_TIMEOUT = 120  # generous: extraction/explanation retry-with-backoff can take several seconds
+# connect is short; read must cover a full extraction/explanation LLM call
+# because SSE is silent between nodes. A 120s total/read timeout made the UI
+# freeze on "Extract facts" when MiniMax thought longer than two minutes.
+UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
 
 
 def spike_stream_proxy(request):
@@ -83,7 +89,7 @@ def _persist_node_complete(claim_id: str, data: dict) -> None:
             override_reason=entry.get("override_reason"),
             override_proposed_amount=entry.get("override_proposed_amount"),
         )
-    if node == "decision_composition" and update.get("decision") is not None:
+    if node in ("decision_composition", "escalation", "commit_decision") and update.get("decision") is not None:
         decision = update["decision"]
         Decision.objects.update_or_create(
             claim_id=claim_id,
@@ -94,8 +100,11 @@ def _persist_node_complete(claim_id: str, data: dict) -> None:
                 escalation_reason=decision.get("escalation_reason"),
             ),
         )
-    if node == "ui_composition" and update.get("ui_spec") is not None:
-        Decision.objects.filter(claim_id=claim_id).update(ui_spec=update["ui_spec"])
+    if node in ("ui_composition", "escalation", "commit_decision") and update.get("ui_spec") is not None:
+        Decision.objects.update_or_create(
+            claim_id=claim_id,
+            defaults=dict(ui_spec=update["ui_spec"]),
+        )
 
 
 def _persist_escalated(claim_id: str, data: dict) -> None:
@@ -165,7 +174,17 @@ def _stream_and_persist(claim_id: str, upstream_url: str, payload: dict):
                 raw_block, buffer = buffer.split("\n\n", 1)
                 event_name, data = _parse_sse_block(raw_block)
                 if event_name and data is not None:
-                    _persist_sse_event(claim_id, event_name, data)
+                    try:
+                        _persist_sse_event(claim_id, event_name, data)
+                    except Exception:
+                        # Persistence must never abort the live stream — a missing
+                        # migration here used to kill the generator after Intake,
+                        # so the UI froze on Extract facts while the agent kept going.
+                        logger.exception(
+                            "Failed to persist SSE event %s for %s; continuing stream",
+                            event_name,
+                            claim_id,
+                        )
 
 
 def _sse_response(generator) -> StreamingHttpResponse:
@@ -183,6 +202,7 @@ class ClaimListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         fields = dict(serializer.validated_data)
         claim_id = fields.pop("claim_id", None) or f"CLM-{uuid4().hex[:10]}"
+        date_of_loss = fields.pop("date_of_loss", None)
 
         if Claim.objects.filter(claim_id=claim_id).exists():
             return Response({"detail": f"claim_id {claim_id!r} already submitted."}, status=409)
@@ -190,6 +210,8 @@ class ClaimListCreateView(APIView):
         Claim.objects.create(claim_id=claim_id, status=Claim.STATUS_IN_PROGRESS, **fields)
 
         payload = {**fields, "claim_id": claim_id}
+        if date_of_loss:
+            payload["date_of_loss"] = date_of_loss
         upstream_url = f"{AGENT_SERVICE_BASE_URL}/claims/{claim_id}/adjudicate"
         return _sse_response(_stream_and_persist(claim_id, upstream_url, payload))
 

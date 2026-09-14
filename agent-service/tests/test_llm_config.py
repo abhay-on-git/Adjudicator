@@ -21,6 +21,7 @@ def test_minimax_settings_resolve_single_model(monkeypatch):
 
     client = get_async_client(settings)
     assert str(client.base_url).rstrip("/") == "https://api.minimax.io/v1"
+    assert client.timeout == 60.0
 
 
 def test_openai_settings_resolve_single_model(monkeypatch):
