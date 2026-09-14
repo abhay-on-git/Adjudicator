@@ -13,6 +13,7 @@ all; it serves entirely from what's already been persisted.
 """
 
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -25,8 +26,13 @@ from rest_framework.views import APIView
 from .models import AuditEvent, Claim, Decision
 from .serializers import ClaimDetailSerializer, ClaimSubmitSerializer, ResumeSerializer
 
+logger = logging.getLogger(__name__)
+
 AGENT_SERVICE_BASE_URL = "http://127.0.0.1:8001"
-UPSTREAM_TIMEOUT = 120  # generous: extraction/explanation retry-with-backoff can take several seconds
+# connect is short; read must cover a full extraction/explanation LLM call
+# because SSE is silent between nodes. A 120s total/read timeout made the UI
+# freeze on "Extract facts" when MiniMax thought longer than two minutes.
+UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
 
 
 def spike_stream_proxy(request):
@@ -165,7 +171,17 @@ def _stream_and_persist(claim_id: str, upstream_url: str, payload: dict):
                 raw_block, buffer = buffer.split("\n\n", 1)
                 event_name, data = _parse_sse_block(raw_block)
                 if event_name and data is not None:
-                    _persist_sse_event(claim_id, event_name, data)
+                    try:
+                        _persist_sse_event(claim_id, event_name, data)
+                    except Exception:
+                        # Persistence must never abort the live stream — a missing
+                        # migration here used to kill the generator after Intake,
+                        # so the UI froze on Extract facts while the agent kept going.
+                        logger.exception(
+                            "Failed to persist SSE event %s for %s; continuing stream",
+                            event_name,
+                            claim_id,
+                        )
 
 
 def _sse_response(generator) -> StreamingHttpResponse:

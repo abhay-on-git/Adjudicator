@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { policyOptionLabel } from '../lib/format'
+import type { ManualTestCase } from '../manualTestCases'
 import type { ClaimSubmission } from '../types'
+import { TestCasePanel } from './TestCasePanel'
 
 const POLICIES = ['POL-HOME-01', 'POL-HEALTH-01', 'POL-MOTOR-01', 'POL-TRAVEL-01'] as const
 
@@ -22,9 +24,16 @@ interface Props {
 
 export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
   const [fields, setFields] = useState<ClaimSubmission>(EMPTY)
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null)
 
   function update<K extends keyof ClaimSubmission>(key: K, value: ClaimSubmission[K]) {
+    setSelectedTestId(null)
     setFields((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function applyTestCase(testCase: ManualTestCase) {
+    setFields({ ...testCase.fields, claim_id: '' })
+    setSelectedTestId(testCase.id)
   }
 
   function handleSubmit(e: FormEvent) {
@@ -87,6 +96,12 @@ export function ClaimSubmitForm({ onSubmit, disabled }: Props) {
             </div>
           </div>
         </section>
+
+        <TestCasePanel
+          policyId={fields.policy_id}
+          selectedTestId={selectedTestId}
+          onSelect={applyTestCase}
+        />
 
         <section className="form-section">
           <h3>Claimant</h3>

@@ -129,3 +129,4 @@ async def test_minimax_parse_sends_temperature_zero(monkeypatch):
     )
     assert parsed.n == 1
     assert captured["temperature"] == 0.0
+    assert captured["extra_body"] == {"thinking": {"type": "disabled"}}

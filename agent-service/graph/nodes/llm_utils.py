@@ -176,10 +176,16 @@ async def _parse_minimax(
         ],
         response_format={"type": "json_object"},
         temperature=STRUCTURED_OUTPUT_TEMPERATURE,
+        # M3 thinking is on by default and can take minutes with no tokens
+        # streamed back — the graph only emits SSE after the node finishes.
+        extra_body={"thinking": {"type": "disabled"}},
     )
     tokens_in, tokens_out = usage_from_response(completion)
     add_llm_usage(tokens_in, tokens_out)
-    content = completion.choices[0].message.content if completion.choices else None
+    message = completion.choices[0].message if completion.choices else None
+    content = getattr(message, "content", None) if message is not None else None
+    if not content:
+        content = getattr(message, "reasoning_content", None) if message is not None else None
     if not content:
         raise _validation_missing(text_format.__name__, "empty MiniMax completion content")
     try:
