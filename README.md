@@ -1,4 +1,4 @@
-# VenXR "Adjudicator" — Insurance Claims Triage Agent
+# "Adjudicator" — Insurance Claims Triage Agent
 
 An insurance claims adjudication agent built on LangGraph (orchestration), Django
 (API surface + persistence), and FastAPI (agent runtime). The LLM extracts facts,
